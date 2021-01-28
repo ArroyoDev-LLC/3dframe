@@ -29,10 +29,6 @@ clean-test: ## remove test and coverage artifacts
 	- rm -rf .tmontmp
 	- rm cov.xml test_log.xml
 
-lint: ## check style with flake8
-	flake8 threedframe tests --config=setup.cfg
-	flake8 --statistics --count -q
-
 test: ## run tests quickly with the default Python
 	pytest -ra
 
@@ -55,11 +51,9 @@ coverage-html: ## generate coverage html
 codestyle: ## cleanup code
 	@printf '$(bold)Cleaning Code...\n$(rsttxt)'
 	- autoflake -r --remove-all-unused-imports --remove-unused-variables ./threedframe --in-place
-	- black ./threedframe
-	- isort -r --remove-all-unused-imports --remove-unused-variables ./threedframe --in-place
-	- autopep8 -i -r --max-line-length=100 --experimental ./threedframe/
+	- black .
+	- isort .
 	- docformatter -r threedframe -i --blank
-	$(MAKE) lint
 
 gendoc: ## Generate Docs
 	$(MAKE) -C docs clean
