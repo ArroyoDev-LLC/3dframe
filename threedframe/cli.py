@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-"""Console script for threedframe."""
+"""Console script for 3DFrame."""
 import sys
 from pathlib import Path
 
@@ -32,13 +32,12 @@ def main():
     type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True),
 )
 @click.argument("vertices", type=int, nargs=-1)
-def generate(model_data, vertices=(), *args, **kwargs):
+def generate(model_data, vertices=tuple(), *args, **kwargs):
     """Generate joint model from given vertex."""
-    verts = vertices
-    if not any(verts):
+    if not any(vertices):
         print("[bold orange]No vertices were provided.")
         click.confirm("Would you like to render ALL vertices?", abort=True)
-    joint.generate(Path(model_data), verts, *args, **kwargs)
+    joint.generate(Path(model_data), vertices, *args, **kwargs)
 
 
 @main.command()

@@ -16,6 +16,7 @@ from solid import *
 from solid.utils import *
 
 from threedframe import utils
+from threedframe.utils import label_size
 
 ROOT = Path(__file__).parent
 
@@ -49,70 +50,6 @@ FIXTURE_HOLE_SIZE = SUPPORT_SIZE + GAP
 FIXTURE_SIZE = FIXTURE_HOLE_SIZE + FIXTURE_WALL_THICKNESS
 
 FIXTURE_ANGLE_FUDGE = 6.3  # Fudge value for fixture angles length.
-
-
-# Fixed version of label size.
-def label_size(
-    a_str: str,
-    width: float = 15,
-    halign: str = "left",
-    valign: str = "baseline",
-    size: int = 10,
-    depth: float = 0.5,
-    lineSpacing: float = 1.15,
-    font: str = "MgOpen Modata:style=Bold",
-    segments: int = 40,
-    spacing: int = 1,
-    direction: str = "ltr",
-    center: bool = False,
-    do_resize=True,
-) -> Tuple[OpenSCADObject, Tuple[float, float, float]]:
-    """Renders a multi-line string into a single 3D object.
-
-    __author__    = 'NerdFever.com'
-    __copyright__ = 'Copyright 2018-2019 NerdFever.com'
-    __version__   = ''
-    __email__     = 'dave@nerdfever.com'
-    __status__    = 'Development'
-    __license__   = Copyright 2018-2019 NerdFever.com
-
-    """
-
-    lines = a_str.splitlines()
-
-    texts = []
-
-    for idx, l in enumerate(lines):
-        t = text(
-            text=l,
-            halign=halign,
-            valign=valign,
-            font=font,
-            spacing=spacing,
-            size=size,
-            direction=direction,
-        ).add_param("$fn", segments)
-        t = linear_extrude(height=depth, center=center)(t)
-        tvals = (0, -size * idx * lineSpacing, 0)
-        if any(tvals):
-            t = translate(tvals)(t)
-        texts.append(t)
-
-    if len(texts) > 1:
-        result = union()(texts)
-    else:
-        result = texts[0]
-    resize_vals = (
-        width,
-        0,
-        depth,
-    )
-    if do_resize:
-        result = resize(resize_vals)(result)
-    restvals = (0, (len(lines) - 1) * size / 2, 0)
-    if any(restvals):
-        result = translate(restvals)(result)
-    return result, resize_vals
 
 
 def assemble_core(

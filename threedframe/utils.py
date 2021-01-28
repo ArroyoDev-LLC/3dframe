@@ -1,14 +1,16 @@
 # -*- coding: utf-8 -*-
 
-"""Model Generator Utils."""
+"""3DFrame Model Generator Utils."""
 import subprocess as sp
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Tuple
 
 from euclid3 import Point3
 from rich.console import RenderableType
 from rich.progress import ProgressColumn, SpinnerColumn, Task, TextColumn
 from rich.text import Text
+from solid import OpenSCADObject, linear_extrude, resize, text, translate, union
 
 
 class ComputeTestResultsColumn(ProgressColumn):
@@ -53,6 +55,8 @@ class ParentSpinnerColumn(SpinnerColumn):
 
 @dataclass
 class ModelInfo:
+    """Computed model info."""
+
     num_vertices: int
     num_edges: int
 
@@ -87,3 +91,67 @@ def exec_blender_script(model_path: Path, script_path: Path, out_path: Path):
         THREEDFRAME_OUT=str(out_path.absolute()), PYTHONPATH=str(Path(__file__).parent.parent)
     )
     return sp.run(_cmd, check=True, env=_cmd_env)
+
+
+# Fixed version of label size.
+def label_size(
+    a_str: str,
+    width: float = 15,
+    halign: str = "left",
+    valign: str = "baseline",
+    size: int = 10,
+    depth: float = 0.5,
+    lineSpacing: float = 1.15,
+    font: str = "MgOpen Modata:style=Bold",
+    segments: int = 40,
+    spacing: int = 1,
+    direction: str = "ltr",
+    center: bool = False,
+    do_resize=True,
+) -> Tuple[OpenSCADObject, Tuple[float, float, float]]:
+    """Renders a multi-line string into a single 3D object.
+
+    __author__    = 'NerdFever.com'
+    __copyright__ = 'Copyright 2018-2019 NerdFever.com'
+    __version__   = ''
+    __email__     = 'dave@nerdfever.com'
+    __status__    = 'Development'
+    __license__   = Copyright 2018-2019 NerdFever.com
+
+    """
+
+    lines = a_str.splitlines()
+
+    texts = []
+
+    for idx, l in enumerate(lines):
+        t = text(
+            text=l,
+            halign=halign,
+            valign=valign,
+            font=font,
+            spacing=spacing,
+            size=size,
+            direction=direction,
+        ).add_param("$fn", segments)
+        t = linear_extrude(height=depth, center=center)(t)
+        tvals = (0, -size * idx * lineSpacing, 0)
+        if any(tvals):
+            t = translate(tvals)(t)
+        texts.append(t)
+
+    if len(texts) > 1:
+        result = union()(texts)
+    else:
+        result = texts[0]
+    resize_vals = (
+        width,
+        0,
+        depth,
+    )
+    if do_resize:
+        result = resize(resize_vals)(result)
+    restvals = (0, (len(lines) - 1) * size / 2, 0)
+    if any(restvals):
+        result = translate(restvals)(result)
+    return result, resize_vals
