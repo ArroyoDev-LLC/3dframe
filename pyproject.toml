@@ -83,6 +83,7 @@ exclude = '''
     | _build
     | build
     | dist
+    | threedframe/lib
   )/
   | foo.py           # also separately exclude a file named foo.py in
                      # the root of the project

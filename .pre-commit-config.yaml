@@ -13,6 +13,7 @@ exclude: |
       | build
       | dist
       | psycopg2
+      | threedframe/lib
     )/
     | foo.py
   )$
