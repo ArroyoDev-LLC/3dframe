@@ -34,6 +34,7 @@ sphinx_rtd_theme = { version = "^0.5.1", optional = true }
 click = "^7.1.2"
 rich = "^9.10.0"
 solidpython = "^1.0.4"
+numpy = "^1.19.5"
 
 [tool.poetry.dev-dependencies]
 autoflake = "^1.4"
@@ -50,10 +51,16 @@ pytest-xdist = "^1.30"
 docformatter = "^1.4"
 pre-commit = "^2.10.0"
 pytest-sugar = "^0.9.4"
+"fake-bpy-module-2.91" = "^20201216"
 
 
 [tool.poetry.extras]
 docs = ["sphinx", "sphinx-autodoc-typehints", "recommonmark", "sphinx_rtd_theme"]
+
+
+[tool.poetry.scripts]
+3dframe = 'threedframe.cli:main'
+
 
 [tool.dephell.main]
 from = { format = "poetry", path = "pyproject.toml" }

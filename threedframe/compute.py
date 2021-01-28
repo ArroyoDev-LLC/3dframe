@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """Gathers all vectors + angels from blender model."""
+import os
 import pickle
 from enum import Enum
 from math import atan2, pi
@@ -12,6 +13,8 @@ import bmesh
 import bpy
 import numpy as np
 from mathutils import Quaternion, Vector
+
+from threedframe.utils import ModelInfo
 
 
 class Direction(Enum):
@@ -158,6 +161,10 @@ obj_data = bpy.data.objects["CyberTruck"].data
 vertex_map: Dict[int, list] = {}
 
 bm = bmesh.from_edit_mesh(obj_data)
+bm.verts.ensure_lookup_table()
+bm.edges.ensure_lookup_table()
+
+model_info = ModelInfo(num_edges=len(bm.edges), num_vertices=len(bm.verts))
 
 for vert in bm.verts:
     rel_origin = vert.co
@@ -215,10 +222,15 @@ pprint(vertex_map[5])
 #             pprint(item)
 
 
-ROOT = Path(__file__).parent
-data_out = ROOT / "cyber_joints.pkl"
+# ROOT = Path(__file__).parent
 
-pickled = pickle.dumps(vertex_map)
+model_data_map = {"info": model_info, "data": vertex_map}
+
+data_out = Path(os.getenv("THREEDFRAME_OUT"))
+
+print(f"Computed: {model_info.num_edges} edges | {model_info.num_vertices} vertices")
+
+pickled = pickle.dumps(model_data_map)
 data_out.write_bytes(pickled)
 
 
