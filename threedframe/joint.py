@@ -7,25 +7,20 @@ import statistics
 import tempfile
 from dataclasses import dataclass
 from enum import Enum
+from os import PathLike
 from pathlib import Path
 
-import click
 from euclid3 import LineSegment3, Point3, Sphere
 from rich import print, progress
 from solid import *
 from solid.utils import *
 
-import utils
+from threedframe import utils
 
 ROOT = Path(__file__).parent
 
-# Cybersticks pickeled model data.
-MODEL_DATA_PATH = ROOT / "cybertruck" / "cyber_joints.pkl"
-
-# MODEL_DATA: Dict[int, List[Tuple[int, int,Tuple[float, float, float]]]] = pickle.loads(MODEL_DATA_PATH.read_bytes())
-MODEL_DATA: Dict[int, List[Tuple[int, float, Tuple[float, float, float]]]] = pickle.loads(
-    MODEL_DATA_PATH.read_bytes()
-)
+MODEL_DATA_PATH = None
+MODEL_DATA: Optional[Dict[int, List[Tuple[int, float, Tuple[float, float, float]]]]] = None
 
 LIB_DIR = ROOT / "lib"
 MCAD = LIB_DIR / "MCAD"
@@ -33,7 +28,7 @@ MCAD = LIB_DIR / "MCAD"
 TAU = 6.2831853071  # 2*PI
 deg = lambda x: 360 * x / TAU
 
-mcad = import_scad("lib/MCAD")
+mcad = import_scad(str(Path(ROOT / "lib/MCAD")))
 
 MM = 1
 INCH = 25.4 * MM
@@ -159,8 +154,14 @@ def with_modifiers(
     return base_dims.as_list
 
 
-def assemble_core(vidx: int, fixture_points: List[Point3], debug=False):
+def assemble_core(
+    vidx: int,
+    fixture_points: List[Point3],
+    debug=False,
+    progress: Optional[progress.Progress] = None,
+):
     union()
+    prog = progress
     # core: OpenSCADObject = mcad.boxes.roundedCube(CORE_SIZE, 15, False, True)
     core_radius = CORE_SIZE / 2
     core = sphere(core_radius)
@@ -193,57 +194,54 @@ def assemble_core(vidx: int, fixture_points: List[Point3], debug=False):
     attempted_points = []
     fixture_boundary = reversed(range(10, 21))
     current_boundary = next(fixture_boundary)
-    with progress.Progress(
-        progress.SpinnerColumn(),
-        progress.TextColumn("[bold white]Computing Core Label Position", justify="right"),
-        utils.ComputeTestResultsColumn(),
-        progress.BarColumn(bar_width=None),
-        progress.TextColumn(
-            "[bold white]Testing point: [gold1]{task.fields[ran_point]}[/gold1] [bold white]@ [bold cyan]{task.fields[current_boundary]}[white] boundary."
-        ),
-    ) as prog:
-        # task = prog.add_task("", start=False)
-        task = None
-        while True:
-            ran_x = points_gauss()
-            ran_y = points_gauss()
-            ran_z = points_gauss()
-            norm = 1 / math.sqrt(math.pow(ran_x, 2) + math.pow(ran_y, 2) + math.pow(ran_z, 2))
-            ran_x *= norm
-            ran_y *= norm
-            ran_z *= norm
-            # Subtract 4 to make the point 4mm inside the core,
-            # so it will later extruded outwards with the correct orientation.
-            ran_x *= core_radius - 4
-            ran_y *= core_radius - 4
-            ran_z *= core_radius - 4
-            _point = (ran_x, ran_y, ran_z)
-            ran_point = Point3(*_point)
-            roun_point = utils.round_point(ran_point, n_digits=6)
-            if roun_point in attempted_points:
-                current_boundary = next(fixture_boundary)
-                prog.print(f"[red bold]Reducing boundary to: {current_boundary}")
-                attempted_points = []
-                continue
-            attempted_points.append(roun_point)
-            if task is None:
-                task = prog.add_task("", ran_point=ran_point, current_boundary=current_boundary)
-            else:
-                prog.update(task, ran_point=ran_point, current_boundary=current_boundary)
-            # print(f"[italic grey70]Testing point: [bold]{ran_point}[/bold] @ [bold]{current_boundary}[/bold] boundary.")
-            # Create a sphere (with some breathing room) at each of
-            # the previously collected points of fixture contact on the core.
-            # Then, test to see if our random point does not intersect with any
-            # of the spheres. This ensures our point is in a clear area on the core.
-            is_clear_fixtures = [
-                not ran_point.intersect(Sphere(p, FIXTURE_SIZE + current_boundary))
-                for p in points_on_core
-            ]
-            prog.update(task, results=is_clear_fixtures)
-            # prog.print(f"[italic grey50]Fixtures cleared: {' '.join(['[bold green]✔[/]' if i else '[bold red]𐄂[/]' for i in is_clear_fixtures])}")
-            if all(is_clear_fixtures):
-                label_point = ran_point
-                break
+    # task = prog.add_task("", start=False)
+    # task = prog.add_task("[bold white]Testing point: [gold1]{task.fields[ran_point]}[/gold1] [bold white]@ [bold cyan]{task.fields[current_boundary]}[white] boundary.")
+    task = None
+    while True:
+        ran_x = points_gauss()
+        ran_y = points_gauss()
+        ran_z = points_gauss()
+        norm = 1 / math.sqrt(math.pow(ran_x, 2) + math.pow(ran_y, 2) + math.pow(ran_z, 2))
+        ran_x *= norm
+        ran_y *= norm
+        ran_z *= norm
+        # Subtract 4 to make the point 4mm inside the core,
+        # so it will later extruded outwards with the correct orientation.
+        ran_x *= core_radius - 4
+        ran_y *= core_radius - 4
+        ran_z *= core_radius - 4
+        _point = (ran_x, ran_y, ran_z)
+        ran_point = Point3(*_point)
+        roun_point = utils.round_point(ran_point, n_digits=6)
+        if roun_point in attempted_points:
+            current_boundary = next(fixture_boundary)
+            prog.print(f"[red bold]Reducing boundary to: {current_boundary}")
+            attempted_points = []
+            continue
+        attempted_points.append(roun_point)
+        if task is None:
+            task = prog.add_task(
+                f"  Computing Core Label Position for V{vidx}",
+                ran_point=ran_point,
+                current_boundary=current_boundary,
+            )
+        else:
+            prog.update(task, ran_point=ran_point, current_boundary=current_boundary)
+        # print(f"[italic grey70]Testing point: [bold]{ran_point}[/bold] @ [bold]{current_boundary}[/bold] boundary.")
+        # Create a sphere (with some breathing room) at each of
+        # the previously collected points of fixture contact on the core.
+        # Then, test to see if our random point does not intersect with any
+        # of the spheres. This ensures our point is in a clear area on the core.
+        is_clear_fixtures = [
+            not ran_point.intersect(Sphere(p, FIXTURE_SIZE + current_boundary))
+            for p in points_on_core
+        ]
+        prog.update(task, results=is_clear_fixtures)
+        # prog.print(f"[italic grey50]Fixtures cleared: {' '.join(['[bold green]✔[/]' if i else '[bold red]𐄂[/]' for i in is_clear_fixtures])}")
+        if all(is_clear_fixtures):
+            label_point = ran_point
+            prog.update(task, visible=False)
+            break
 
     print(
         f"[bold white]Found clear point: [/]{label_point} @ {current_boundary}[bold white] boundary."
@@ -554,13 +552,13 @@ def assembly(vertex: int, *args, **kwargs):
     # c = rotate(29, BACK_VEC)(c)
     # a += c
 
-    p0 = Point3(0, 0, 0)
-    p1 = Point3(-9.395675659179688, 105.18434143066406, -13.352337837219238)
+    Point3(0, 0, 0)
+    Point3(-9.395675659179688, 105.18434143066406, -13.352337837219238)
     p2 = Point3(-9.488700866699219, -67.73377990722656, -22.688980102539062)
     Point3(37.84366989135742, -1.52587890625e-05, 0.0)
 
     # p1n = Point3(9.395675659179688, -105.18434143066406, 13.352337837219238)
-    [p0, p1, p2]
+    # [p0, p1, p2]
 
     # points = offset_points([p0, p1, p2], CORE_SIZE)
     # paths = vectors_between_points(points)
@@ -617,6 +615,8 @@ def assembly(vertex: int, *args, **kwargs):
     #     down(CORE_SIZE / 2 + FIXTURE_WALL_THICKNESS)(linear_extrude(p3.magnitude())(base_hole.copy()))
     # )
 
+    progress = kwargs.pop("progress", None)
+
     fixture_points: List[Point3] = []
     fixtures: List[OpenSCADObject] = []
     for fix, point in assemble_vertex(vertex, *args, **kwargs):
@@ -625,7 +625,7 @@ def assembly(vertex: int, *args, **kwargs):
         if point:
             fixture_points.append(point)
 
-    core = assemble_core(vertex, fixture_points, *args, **kwargs)
+    core = assemble_core(vertex, fixture_points, *args, **kwargs, progress=progress)
     for fix in fixtures:
         core += fix
 
@@ -657,35 +657,50 @@ def create_model(vidx: int, *args, **kwargs):
     scad_render_to_file(a, file_header=f"$fn = {SEGMENTS};", include_orig_code=True)
 
 
-@click.command()
-@click.option("-d", "--debug", is_flag=True, default=False)
-@click.option("-r", "--render", is_flag=True, default=False)
-@click.option("-k", "--keep", is_flag=True, default=False, help="Keep SCAD Files.")
-@click.option(
-    "-f",
-    "--file-type",
-    default="stl",
-    help="Exported file type.",
-)
-@click.argument("vertices", type=int, nargs=-1)
-def generate(vertices, debug=False, render=False, keep=False, file_type="stl"):
+def load_model(model_path: Path) -> utils.ModelInfo:
+    global MODEL_DATA, MODEL_DATA_PATH
+    MODEL_DATA_PATH = model_path
+    data: utils.ModelInfo = pickle.loads(MODEL_DATA_PATH.read_bytes())
+    MODEL_DATA = data["data"]
+    return data["info"]
+
+
+def generate(
+    model_path: PathLike, vertices=tuple(), debug=False, render=False, keep=False, file_type="stl"
+):
     """Generate joint model from given vertex."""
-    output_dir = ROOT / "renders"
-    for vertex in vertices:
-        if not render:
-            return create_model(vertex, debug=debug)
-        a = assembly(vertex, debug=debug)
-        _, file_name = tempfile.mkstemp(suffix=".scad")
-        file_path = Path(tempfile.gettempdir()) / file_name
-        out_render = scad_render(a, file_header=f"$fn = {SEGMENTS};")
-        file_path.write_text(out_render)
-        render_name = f"joint-v{vertex}.{file_type}"
-        render_path = output_dir / render_name
-        utils.openscad_cmd("-o", str(render_path), str(file_path))
-        if keep:
-            scad_path = render_path.with_suffix(".scad")
-            shutil.move(file_path, scad_path)
-
-
-if __name__ == "__main__":
-    generate()
+    info = load_model(model_path)
+    if not any(vertices):
+        vertices = tuple(range(info.num_vertices))
+        print(f"[bold orange]Rendering: {info.num_edges} edges | {info.num_vertices} vertices")
+        print(vertices)
+    output_dir = ROOT.parent / "renders"
+    output_dir.mkdir(exist_ok=True)
+    with progress.Progress(
+        utils.ParentSpinnerColumn(),
+        progress.TextColumn("[bold white]{task.description}"),
+        utils.ParentProgressColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        utils.ComputeTestResultsColumn(),
+        progress.BarColumn(bar_width=None),
+        utils.ComputeTestResultsTextColumn(),
+        transient=True,
+    ) as prog:
+        task = prog.add_task("[green]Generating Models...", total=info.num_vertices)
+        for vertex in vertices:
+            if not render:
+                return create_model(vertex, debug=debug)
+            a = assembly(vertex, debug=debug, progress=prog)
+            _, file_name = tempfile.mkstemp(suffix=".scad")
+            file_path = Path(tempfile.gettempdir()) / file_name
+            out_render = scad_render(a, file_header=f"$fn = {SEGMENTS};")
+            file_path.write_text(out_render)
+            render_name = f"joint-v{vertex}.{file_type}"
+            render_path = output_dir / render_name
+            proc = utils.openscad_cmd("-o", str(render_path), str(file_path))
+            for line in iter(proc.stderr.readline, b""):
+                outline = line.decode().rstrip("\n")
+                prog.console.print(f"[grey42]{outline}")
+            if keep:
+                scad_path = render_path.with_suffix(".scad")
+                shutil.move(file_path, scad_path)
+            prog.update(task, advance=1)
