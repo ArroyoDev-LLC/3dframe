@@ -235,3 +235,4 @@ dmypy.json
 
 .envrc
 .direnv
+!threedframe/lib

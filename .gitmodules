@@ -1,0 +1,3 @@
+[submodule "threedframe/lib/MCAD"]
+	path = threedframe/lib/MCAD
+	url = https://github.com/openscad/MCAD.git
