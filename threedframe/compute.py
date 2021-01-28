@@ -1,22 +1,17 @@
 # -*- coding: utf-8 -*-
 
 """Gathers all vectors + angels from blender model."""
-from typing import Tuple, Dict, Iterable, List, Optional
-from pprint import pprint
 import pickle
 from enum import Enum
-import pdb
-import vg
-from mathutils import Matrix, Vector, Quaternion, Euler
+from math import atan2, pi
 from pathlib import Path
-from bpy import context
-from math import degrees, atan2, pi
+from pprint import pprint
+from typing import Dict, Tuple
+
 import bmesh
-from bmesh.types import BMVert, BMEdge
-
-
-import numpy as np
 import bpy
+import numpy as np
+from mathutils import Quaternion, Vector
 
 
 class Direction(Enum):
@@ -58,7 +53,7 @@ class PlanarVectors(Enum):
 
 
 def unit_vector(vector):
-    """ Returns the unit vector of the vector.  """
+    """Returns the unit vector of the vector."""
     return vector / np.linalg.norm(vector)
 
 
@@ -71,6 +66,7 @@ def angle_between(v1, v2):
     0.0
     >>> angle_between((1, 0, 0), (-1, 0, 0))
     3.141592653589793
+
     """
     v1_u = unit_vector(v1)
     v2_u = unit_vector(v2)
@@ -139,7 +135,6 @@ def edge_angle(e1, e2, face_normal):
     c = (M @ c).xy.normalized()
     return pi - atan2(a.cross(c), a.dot(c))
 
-
     # quat_for = axis.rotation_difference(forward)
     # quat_right = axis.rotation_difference(right)
 
@@ -170,7 +165,13 @@ for vert in bm.verts:
     for edge in vert.link_edges:
         other_vert = edge.other_vert(vert)
         relative_vector: Vector = other_vert.co - rel_origin
-        vertex_map[vert.index].append((edge.index, edge.calc_length(), (relative_vector.x, relative_vector.y, relative_vector.z)))
+        vertex_map[vert.index].append(
+            (
+                edge.index,
+                edge.calc_length(),
+                (relative_vector.x, relative_vector.y, relative_vector.z),
+            )
+        )
 
 # for f in bm.faces:
 #     edges = f.edges[:]
@@ -187,15 +188,15 @@ for vert in bm.verts:
 #
 #         vertex_map.setdefault(corner_vert.index, list())
 #         vertex_map[corner_vert.index].append((e1.index, e2.index, degrees(a), f.index))
-        # print(verts)
+# print(verts)
 
-        # for vert in e1.verts:
-        # vertex_map.setdefault(vert.index, set())
-        # vertex_map[vert.index].add(e1.index, degrees(angle))
+# for vert in e1.verts:
+# vertex_map.setdefault(vert.index, set())
+# vertex_map[vert.index].add(e1.index, degrees(angle))
 
-        # for vert in verts:
-        #     vertex_map.setdefault(vert.index, set())
-        #     vertex_map[vert.index].add((e1.index, e2.index, degrees(angle), axis, e1.calc_length()))
+# for vert in verts:
+#     vertex_map.setdefault(vert.index, set())
+#     vertex_map[vert.index].add((e1.index, e2.index, degrees(angle), axis, e1.calc_length()))
 
 # pprint(vertex_map)
 # pprint(vertex_map[5])

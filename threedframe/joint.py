@@ -2,15 +2,15 @@
 import math
 import pickle
 import random
+import shutil
 import statistics
 import tempfile
-import shutil
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
 import click
-from euclid3 import Point3, LineSegment3, Sphere
+from euclid3 import LineSegment3, Point3, Sphere
 from rich import print, progress
 from solid import *
 from solid.utils import *
@@ -23,9 +23,9 @@ ROOT = Path(__file__).parent
 MODEL_DATA_PATH = ROOT / "cybertruck" / "cyber_joints.pkl"
 
 # MODEL_DATA: Dict[int, List[Tuple[int, int,Tuple[float, float, float]]]] = pickle.loads(MODEL_DATA_PATH.read_bytes())
-MODEL_DATA: Dict[
-    int, List[Tuple[int, float, Tuple[float, float, float]]]
-] = pickle.loads(MODEL_DATA_PATH.read_bytes())
+MODEL_DATA: Dict[int, List[Tuple[int, float, Tuple[float, float, float]]]] = pickle.loads(
+    MODEL_DATA_PATH.read_bytes()
+)
 
 LIB_DIR = ROOT / "lib"
 MCAD = LIB_DIR / "MCAD"
@@ -69,8 +69,8 @@ def label_size(
     segments: int = 40,
     spacing: int = 1,
     direction: str = "ltr",
-    center: bool =False,
-        do_resize=True
+    center: bool = False,
+    do_resize=True,
 ) -> Tuple[OpenSCADObject, Tuple[float, float, float]]:
     """Renders a multi-line string into a single 3D object.
 
@@ -80,6 +80,7 @@ def label_size(
     __email__     = 'dave@nerdfever.com'
     __status__    = 'Development'
     __license__   = Copyright 2018-2019 NerdFever.com
+
     """
 
     lines = a_str.splitlines()
@@ -88,7 +89,13 @@ def label_size(
 
     for idx, l in enumerate(lines):
         t = text(
-            text=l, halign=halign, valign=valign, font=font, spacing=spacing, size=size, direction=direction
+            text=l,
+            halign=halign,
+            valign=valign,
+            font=font,
+            spacing=spacing,
+            size=size,
+            direction=direction,
         ).add_param("$fn", segments)
         t = linear_extrude(height=depth, center=center)(t)
         tvals = (0, -size * idx * lineSpacing, 0)
@@ -100,7 +107,11 @@ def label_size(
         result = union()(texts)
     else:
         result = texts[0]
-    resize_vals = (width, 0, depth,)
+    resize_vals = (
+        width,
+        0,
+        depth,
+    )
     if do_resize:
         result = resize(resize_vals)(result)
     restvals = (0, (len(lines) - 1) * size / 2, 0)
@@ -149,7 +160,7 @@ def with_modifiers(
 
 
 def assemble_core(vidx: int, fixture_points: List[Point3], debug=False):
-    a = union()
+    union()
     # core: OpenSCADObject = mcad.boxes.roundedCube(CORE_SIZE, 15, False, True)
     core_radius = CORE_SIZE / 2
     core = sphere(core_radius)
@@ -177,7 +188,6 @@ def assemble_core(vidx: int, fixture_points: List[Point3], debug=False):
     points_stdev = statistics.stdev(points_dataset)
     points_gauss = lambda: random.gauss(points_mean, points_stdev)
 
-
     # Generate "random" XYZ coords using Guassian distribution for uniformity
     # on the surface of the spherical core.
     attempted_points = []
@@ -186,9 +196,11 @@ def assemble_core(vidx: int, fixture_points: List[Point3], debug=False):
     with progress.Progress(
         progress.SpinnerColumn(),
         progress.TextColumn("[bold white]Computing Core Label Position", justify="right"),
-            utils.ComputeTestResultsColumn(),
-            progress.BarColumn(bar_width=None),
-        progress.TextColumn("[bold white]Testing point: [gold1]{task.fields[ran_point]}[/gold1] [bold white]@ [bold cyan]{task.fields[current_boundary]}[white] boundary."),
+        utils.ComputeTestResultsColumn(),
+        progress.BarColumn(bar_width=None),
+        progress.TextColumn(
+            "[bold white]Testing point: [gold1]{task.fields[ran_point]}[/gold1] [bold white]@ [bold cyan]{task.fields[current_boundary]}[white] boundary."
+        ),
     ) as prog:
         # task = prog.add_task("", start=False)
         task = None
@@ -196,9 +208,7 @@ def assemble_core(vidx: int, fixture_points: List[Point3], debug=False):
             ran_x = points_gauss()
             ran_y = points_gauss()
             ran_z = points_gauss()
-            norm = 1 / math.sqrt(
-                math.pow(ran_x, 2) + math.pow(ran_y, 2) + math.pow(ran_z, 2)
-            )
+            norm = 1 / math.sqrt(math.pow(ran_x, 2) + math.pow(ran_y, 2) + math.pow(ran_z, 2))
             ran_x *= norm
             ran_y *= norm
             ran_z *= norm
@@ -226,7 +236,8 @@ def assemble_core(vidx: int, fixture_points: List[Point3], debug=False):
             # Then, test to see if our random point does not intersect with any
             # of the spheres. This ensures our point is in a clear area on the core.
             is_clear_fixtures = [
-                not ran_point.intersect(Sphere(p, FIXTURE_SIZE + current_boundary)) for p in points_on_core
+                not ran_point.intersect(Sphere(p, FIXTURE_SIZE + current_boundary))
+                for p in points_on_core
             ]
             prog.update(task, results=is_clear_fixtures)
             # prog.print(f"[italic grey50]Fixtures cleared: {' '.join(['[bold green]✔[/]' if i else '[bold red]𐄂[/]' for i in is_clear_fixtures])}")
@@ -234,20 +245,25 @@ def assemble_core(vidx: int, fixture_points: List[Point3], debug=False):
                 label_point = ran_point
                 break
 
-    print(f"[bold white]Found clear point: [/]{label_point} @ {current_boundary}[bold white] boundary.")
+    print(
+        f"[bold white]Found clear point: [/]{label_point} @ {current_boundary}[bold white] boundary."
+    )
 
-    text_el, res_vals = label_size(f"V{vidx}\n ",
-                         halign="center",
-                         size=min([current_boundary, 8]),
-                         width=min([current_boundary, 16]),
-                         depth=4,
-                         )
+    text_el, res_vals = label_size(
+        f"V{vidx}\n ",
+        halign="center",
+        size=min([current_boundary, 8]),
+        width=min([current_boundary, 16]),
+        depth=4,
+    )
     # if debug:
     #     core.modifier = "%"
     # core.modifier = '%'
     # a.add(core)
     inverse_label = Point3(-label_point.x, -label_point.y, -label_point.z)
-    text_el = transform_to_point(text_el.copy(), dest_point=label_point, dest_normal=inverse_label.normalized())
+    text_el = transform_to_point(
+        text_el.copy(), dest_point=label_point, dest_normal=inverse_label.normalized()
+    )
     # core -= resize(res_vals)(text_el)
     core -= text_el
     # core -= hole()(text_el)
@@ -404,9 +420,7 @@ def assemble_vertex(vidx: int, debug=False):
         if to_core_dist > 0:
             label_distance += to_core_dist
 
-        fix = up(to_core_dist - CORE_SIZE / 4)(
-            linear_extrude(extrusion_height)(base_fix.copy())
-        )
+        fix = up(to_core_dist - CORE_SIZE / 4)(linear_extrude(extrusion_height)(base_fix.copy()))
         # Fixture label
         # fix -= hole()(
         #     z_dir(label_distance - 10)(
@@ -425,19 +439,19 @@ def assemble_vertex(vidx: int, debug=False):
         #     )
         # )
         fix -= z_dir(label_distance - 10)(
-                forward(FIXTURE_SIZE / 2 - FIXTURE_WALL_THICKNESS / 4)(
-                    box_align(
-                        label_size(
-                            f"E{edge}\n{edge_length}",
-                            halign="center",
-                            depth=2,
-                            size=8,
-                            width=16,
-                        )[0],
-                        forward,
-                    )
+            forward(FIXTURE_SIZE / 2 - FIXTURE_WALL_THICKNESS / 4)(
+                box_align(
+                    label_size(
+                        f"E{edge}\n{edge_length}",
+                        halign="center",
+                        depth=2,
+                        size=8,
+                        width=16,
+                    )[0],
+                    forward,
                 )
             )
+        )
         # Fixture main hole
         # fix -= hole()(
         #     up(to_core_dist - CORE_SIZE / 2)(
@@ -447,11 +461,8 @@ def assemble_vertex(vidx: int, debug=False):
         #     )
         # )
         fix -= up(to_core_dist - CORE_SIZE / 2)(
-                linear_extrude(extrusion_height - FIXTURE_WALL_THICKNESS)(
-                    base_hole.copy()
-                )
-            )
-
+            linear_extrude(extrusion_height - FIXTURE_WALL_THICKNESS)(base_hole.copy())
+        )
 
         # fix -= hole()(
         #     down(CORE_SIZE / 2 + FIXTURE_WALL_THICKNESS)(linear_extrude(point.magnitude())(base_hole.copy()))
@@ -546,10 +557,10 @@ def assembly(vertex: int, *args, **kwargs):
     p0 = Point3(0, 0, 0)
     p1 = Point3(-9.395675659179688, 105.18434143066406, -13.352337837219238)
     p2 = Point3(-9.488700866699219, -67.73377990722656, -22.688980102539062)
-    p3 = Point3(37.84366989135742, -1.52587890625e-05, 0.0)
+    Point3(37.84366989135742, -1.52587890625e-05, 0.0)
 
     # p1n = Point3(9.395675659179688, -105.18434143066406, 13.352337837219238)
-    points = [p0, p1, p2]
+    [p0, p1, p2]
 
     # points = offset_points([p0, p1, p2], CORE_SIZE)
     # paths = vectors_between_points(points)
@@ -636,7 +647,7 @@ def assembly(vertex: int, *args, **kwargs):
     # core += transform_to_point(base_fix.copy(), p2, p2.normalized())
 
     a += core
-    if kwargs.get('debug', False):
+    if kwargs.get("debug", False):
         a += grid_plane(plane="xyz", grid_unit=inch(1))
     return a
 
@@ -647,27 +658,32 @@ def create_model(vidx: int, *args, **kwargs):
 
 
 @click.command()
-@click.option('-d', '--debug', is_flag=True, default=False)
-@click.option('-r', '--render', is_flag=True, default=False)
-@click.option('-k', '--keep', is_flag=True, default=False, help="Keep SCAD Files.")
-@click.option('-f', '--file-type', default='stl', help="Exported file type.", )
-@click.argument('vertices', type=int, nargs=-1)
-def generate(vertices, debug=False, render=False, keep=False, file_type='stl'):
+@click.option("-d", "--debug", is_flag=True, default=False)
+@click.option("-r", "--render", is_flag=True, default=False)
+@click.option("-k", "--keep", is_flag=True, default=False, help="Keep SCAD Files.")
+@click.option(
+    "-f",
+    "--file-type",
+    default="stl",
+    help="Exported file type.",
+)
+@click.argument("vertices", type=int, nargs=-1)
+def generate(vertices, debug=False, render=False, keep=False, file_type="stl"):
     """Generate joint model from given vertex."""
-    output_dir = ROOT / 'renders'
+    output_dir = ROOT / "renders"
     for vertex in vertices:
         if not render:
             return create_model(vertex, debug=debug)
         a = assembly(vertex, debug=debug)
-        _, file_name = tempfile.mkstemp(suffix='.scad')
+        _, file_name = tempfile.mkstemp(suffix=".scad")
         file_path = Path(tempfile.gettempdir()) / file_name
         out_render = scad_render(a, file_header=f"$fn = {SEGMENTS};")
         file_path.write_text(out_render)
         render_name = f"joint-v{vertex}.{file_type}"
         render_path = output_dir / render_name
-        utils.openscad_cmd('-o', str(render_path), str(file_path))
+        utils.openscad_cmd("-o", str(render_path), str(file_path))
         if keep:
-            scad_path = render_path.with_suffix('.scad')
+            scad_path = render_path.with_suffix(".scad")
             shutil.move(file_path, scad_path)
 
 
