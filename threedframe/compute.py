@@ -3,16 +3,16 @@
 """Gathers all vectors + angels from blender model."""
 import os
 import pickle
-from math import atan2, pi
-from pathlib import Path
+from math import pi, atan2
 from pprint import pprint
 from typing import Dict
+from pathlib import Path
 
-import bmesh
 import bpy
-from mathutils import Quaternion, Vector
+import bmesh
+from mathutils import Vector, Quaternion
 
-from threedframe.utils import ModelInfo
+from threedframe.utils import ModelData, ModelEdge, ModelVertex
 
 UP = Vector((0, 0, 1))
 
@@ -47,30 +47,55 @@ bm = bmesh.from_edit_mesh(obj_data)
 bm.verts.ensure_lookup_table()
 bm.edges.ensure_lookup_table()
 
-model_info = ModelInfo(num_edges=len(bm.edges), num_vertices=len(bm.verts))
 
+vertices = {}
 for vert in bm.verts:
+    # Treat this vector as our new 'origin'
     rel_origin = vert.co
     vertex_map.setdefault(vert.index, list())
+    joint_edges = []
     for edge in vert.link_edges:
+        # Other vertex this edge is connected too.
         other_vert = edge.other_vert(vert)
+        # Vector FROM other vertex coming INTO joint.
         relative_vector: Vector = other_vert.co - rel_origin
+
+        edge_length = edge.calc_length()
+
+        # TODO: use bpy.context.scene.unit_settings to be dynamic.
+        # assuming scene is using imperial w/ LENGTH set to inches
+        edge_length_mm = edge_length * 25.4
+
+        edge_info = ModelEdge(
+            eidx=edge.index,
+            length=edge_length_mm,
+            joint_vidx=vert.index,
+            target_vidx=other_vert.index,
+            vector_ingress=(
+                relative_vector.x,
+                relative_vector.y,
+                relative_vector.z,
+            ),
+        )
+        # Map of joint-side edges -> target vertices.
+        joint_edges.append(edge_info)
         vertex_map[vert.index].append(
             (
                 edge.index,
-                edge.calc_length(),
+                edge_length_mm,
                 (relative_vector.x, relative_vector.y, relative_vector.z),
             )
         )
+    vertex_info = ModelVertex(vert.index, edges=joint_edges)
+    vertices[vert.index] = vertex_info
 
-pprint(vertex_map)
-pprint(vertex_map[5])
+model_info = ModelData(num_edges=len(bm.edges), num_vertices=len(bm.verts), vertices=vertices)
 
-model_data_map = {"info": model_info, "data": vertex_map}
+pprint(model_info)
 
 data_out = Path(os.getenv("THREEDFRAME_OUT"))
 
 print(f"Computed: {model_info.num_edges} edges | {model_info.num_vertices} vertices")
 
-pickled = pickle.dumps(model_data_map)
+pickled = pickle.dumps(model_info)
 data_out.write_bytes(pickled)
