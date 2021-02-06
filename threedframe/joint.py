@@ -343,7 +343,7 @@ def generate(
 ):
     """Generate joint model from given vertex."""
     model_data = load_model(model_path)
-    if not any(vertices):
+    if not any(vertices) and not vertices == tuple([0]):
         vertices = tuple(range(model_data.num_vertices))
         print(
             f"[bold orange]Rendering: {model_data.num_edges} edges | {model_data.num_vertices} vertices"

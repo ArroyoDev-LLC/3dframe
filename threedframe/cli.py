@@ -37,7 +37,7 @@ def main():
 @click.argument("vertices", type=int, nargs=-1)
 def generate(model_data, vertices=tuple(), watch=False, *args, **kwargs):
     """Generate joint model from given vertex."""
-    if not any(vertices):
+    if not any(vertices) and not vertices == tuple([0]):
         print("[bold orange]No vertices were provided.")
         click.confirm("Would you like to render ALL vertices?", abort=True)
     threedframe.joint.generate(Path(model_data), vertices, *args, **kwargs)
