@@ -50,7 +50,7 @@ coverage-html: ## generate coverage html
 
 codestyle: ## cleanup code
 	@printf '$(bold)Cleaning Code...\n$(rsttxt)'
-	- autoflake -r --remove-all-unused-imports --remove-unused-variables ./threedframe --in-place
+	- autoflake -r --remove-all-unused-imports --exclude "./threeframe/lib/**/*" --in-place ./threedframe
 	- black .
 	- isort .
 	- docformatter -r threedframe -i --blank
