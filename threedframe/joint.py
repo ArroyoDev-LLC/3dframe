@@ -53,107 +53,6 @@ FIXTURE_SIZE = FIXTURE_HOLE_SIZE + FIXTURE_WALL_THICKNESS
 FIXTURE_ANGLE_FUDGE = 6.3  # Fudge value for fixture angles length.
 
 
-def assemble_core(
-    vidx: int,
-    fixture_points: List[Point3],
-    debug=False,
-    progress: Optional[progress.Progress] = None,
-):
-    union()
-    prog = progress
-    core_radius = CORE_SIZE / 2
-    core = sphere(core_radius)
-
-    # Here, we use the fixture reference points
-    # to calculate a safe area (one that isn't covered by a fixture)
-    # to place our vertex label.
-
-    # reference sphere for calculations
-    sphere_obj = Sphere(Point3(*ORIGIN), radius=CORE_SIZE)
-
-    # Create a line segment from the fixture points
-    # reaching back to origin.
-    # Adds the point of contact of the line on the core to the array below.
-    points_on_core = []
-    for point in fixture_points:
-        sphere_at_point = Sphere(point, FIXTURE_SIZE)
-        line_to_origin_sphere: LineSegment3 = sphere_at_point.connect(sphere_obj)
-        print(line_to_origin_sphere, line_to_origin_sphere.p2)
-        points_on_core.append(line_to_origin_sphere.p2)
-
-    # Determine mean/stdev for Guassian distribution.
-    points_dataset = list(frange(-core_radius, core_radius))
-    points_mean = statistics.mean(points_dataset)
-    points_stdev = statistics.stdev(points_dataset)
-    points_gauss = lambda: random.gauss(points_mean, points_stdev)
-
-    # Generate "random" XYZ coords using Guassian distribution for uniformity
-    # on the surface of the spherical core.
-    attempted_points = []
-    fixture_boundary = reversed(range(10, 21))
-    current_boundary = next(fixture_boundary)
-    task = None
-    while True:
-        ran_x = points_gauss()
-        ran_y = points_gauss()
-        ran_z = points_gauss()
-        norm = 1 / math.sqrt(math.pow(ran_x, 2) + math.pow(ran_y, 2) + math.pow(ran_z, 2))
-        ran_x *= norm
-        ran_y *= norm
-        ran_z *= norm
-        # Subtract 4 to make the point 4mm inside the core,
-        # so it will later extruded outwards with the correct orientation.
-        ran_x *= core_radius - 4
-        ran_y *= core_radius - 4
-        ran_z *= core_radius - 4
-        _point = (ran_x, ran_y, ran_z)
-        ran_point = Point3(*_point)
-        roun_point = utils.round_point(ran_point, n_digits=6)
-        if roun_point in attempted_points:
-            current_boundary = next(fixture_boundary)
-            prog.print(f"[red bold]Reducing boundary to: {current_boundary}")
-            attempted_points = []
-            continue
-        attempted_points.append(roun_point)
-        if task is None:
-            task = prog.add_task(
-                f"  Computing Core Label Position for V{vidx}",
-                ran_point=ran_point,
-                current_boundary=current_boundary,
-            )
-        else:
-            prog.update(task, ran_point=ran_point, current_boundary=current_boundary)
-        # Create a sphere (with some breathing room) at each of
-        # the previously collected points of fixture contact on the core.
-        # Then, test to see if our random point does not intersect with any
-        # of the spheres. This ensures our point is in a clear area on the core.
-        is_clear_fixtures = [
-            not ran_point.intersect(Sphere(p, FIXTURE_SIZE + current_boundary))
-            for p in points_on_core
-        ]
-        prog.update(task, results=is_clear_fixtures)
-        if all(is_clear_fixtures):
-            label_point = ran_point
-            prog.update(task, visible=False)
-            break
-
-    print(
-        f"[bold white]Found clear point: [/]{label_point} @ {current_boundary}[bold white] boundary."
-    )
-
-    text_el, res_vals = label_size(
-        f"V{vidx}\n ",
-        halign="center",
-        size=min([current_boundary, 8]),
-        width=min([current_boundary, 16]),
-        depth=4,
-    )
-    inverse_label = Point3(-label_point.x, -label_point.y, -label_point.z)
-    text_el = transform_to_point(
-        text_el.copy(), dest_point=label_point, dest_normal=inverse_label.normalized()
-    )
-    core -= text_el
-    return core
 def assemble_vertex(vidx: int, debug=False, extrusion_height=None, solid=False):
     v_data = MODEL_DATA.vertices[vidx]
 
@@ -299,6 +198,39 @@ def assemble_vertex(vidx: int, debug=False, extrusion_height=None, solid=False):
         if debug:
             fix.modifier = "#"
         yield fix, midpoint, inspect_data
+
+
+def find_core_vertice_cubes(fixture_datasets):
+    """Create cubes on each fixture vertice.
+
+    This creates a cube on each vertex of every fixture on the face
+    closest to origin. Then, the core is created by taking the convex
+    hull of all the cubes.
+
+    """
+    core_vertice_cubes = []
+    for datasets in fixture_datasets:
+        vert_set = datasets["verts"]
+        vert_pts_set = [Point(*p) for p in vert_set]
+        missing_pt = utils.find_missing_rect_vertex(*vert_pts_set)
+        vert_set.append(missing_pt)
+        # Find midpoint of inner corners of fixture
+        fp_1 = Point(*tuple(vert_set[0]))
+        fp_2 = max([Point(*tuple(p)) for p in vert_set], key=lambda p: fp_1.canberra_distance(p))
+        face_midpoint = fp_1.midpoint(fp_2)
+        for vert in vert_set:
+            # First face is the one closest to origin.
+            face_norm = datasets["norms_by_face"]["0"]
+            core_cube = color("red")(cube(1, center=True))
+            vert_point = Point(*tuple(vert))
+            # Scale corner point with reference to midpoint to 'inset' cubes into corners
+            scaled_point = vert_point.scale(0.9575, 0.9575, 0.9575, pt=face_midpoint)
+            core_cube = transform_to_point(
+                core_cube, dest_point=tuple(scaled_point), dest_normal=tuple(face_norm)
+            )
+            core_vertice_cubes.append(core_cube)
+
+    return core_vertice_cubes
 
 
 def assembly(vertex: int, *args, **kwargs):
