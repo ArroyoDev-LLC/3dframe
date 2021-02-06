@@ -261,11 +261,14 @@ def assembly(vertex: int, *args, **kwargs):
     debug = kwargs.get("debug", False)
 
     fixtures = list(assemble_vertex(vertex, debug=False, solid=False))
-    normal_fixtures = [f[0] for f in fixtures]
+    # normal_fixtures = [f.scad_object for f in fixtures]
+    fixtures = list(label_fixtures(fixtures, **kwargs))
+    normal_fixtures = [f.scad_object for f in fixtures]
+    inner_fixtures = [f.inner_object for f in fixtures]
 
     solid_fixture_data = list(assemble_vertex(vertex, debug=False, solid=True))
-    solid_fixtures = [f[0] for f in solid_fixture_data]
-    fixture_datas = [f[2] for f in solid_fixture_data]
+    solid_fixtures = [f.scad_object for f in solid_fixture_data]
+    fixture_datas = [f.inspect_data for f in solid_fixture_data]
 
     core_vertice_cubes = find_core_vertice_cubes(fixture_datas)
 
@@ -325,11 +328,22 @@ def assembly(vertex: int, *args, **kwargs):
 
     core -= text_el
 
-    for f in normal_fixtures:
+    fixture_union = union()
+    for fidx, f in enumerate(normal_fixtures):
         if debug:
             a += f
         else:
-            core += f
+            # for sidx, s in enumerate(inner_fixtures):
+            #     if sidx != fidx:
+            #         f -= hole()(s)
+            fixture_union += f
+
+    for inner_fix in inner_fixtures:
+        # inner_fix = color('red')(inner_fix)
+        fixture_union -= hole()(inner_fix)
+        # fixture_union -= hole()(inner_fix)
+
+    core += fixture_union
 
     # Debug Core Hull vertices
     if debug:
