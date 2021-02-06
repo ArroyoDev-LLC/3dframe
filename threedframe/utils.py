@@ -331,3 +331,21 @@ class FileModifiedWatcher:
             self.stop()
 
 
+def find_missing_rect_vertex(pa: S.Point3D, pb: S.Point3D, pc: S.Point3D) -> S.Point3D:
+    """Given 3 3d points of a rectangle, find a return the fourth missing
+    vertex."""
+    x, y, z = S.symbols("x y z")
+    expr = x + y - z
+    pd_pts = []
+    for attr in (
+        "x",
+        "y",
+        "z",
+    ):
+        attr_pt = expr.subs(
+            [(x, getattr(pa, attr)), (y, getattr(pc, attr)), (z, getattr(pb, attr))]
+        )
+        pd_pts.append(attr_pt)
+    return S.Point3D(*pd_pts)
+
+
