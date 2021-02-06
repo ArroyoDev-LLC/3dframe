@@ -3,11 +3,13 @@
 """Console script for 3DFrame."""
 import sys
 from pathlib import Path
+from importlib import reload
 
 import click
 from rich import print
 
-from threedframe import joint, utils
+import threedframe.joint
+import threedframe.utils
 
 
 @click.group()
@@ -21,6 +23,7 @@ def main():
     "-r", "--render", is_flag=True, default=False, help="Render to .STL or provided file type."
 )
 @click.option("-k", "--keep", is_flag=True, default=False, help="Keep SCAD Files.")
+@click.option("-w", "--watch", is_flag=True, default=False, help="Watch for changes.")
 @click.option(
     "-f",
     "--file-type",
@@ -32,12 +35,24 @@ def main():
     type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True),
 )
 @click.argument("vertices", type=int, nargs=-1)
-def generate(model_data, vertices=tuple(), *args, **kwargs):
+def generate(model_data, vertices=tuple(), watch=False, *args, **kwargs):
     """Generate joint model from given vertex."""
     if not any(vertices):
         print("[bold orange]No vertices were provided.")
         click.confirm("Would you like to render ALL vertices?", abort=True)
-    joint.generate(Path(model_data), vertices, *args, **kwargs)
+    threedframe.joint.generate(Path(model_data), vertices, *args, **kwargs)
+    if watch:
+
+        def _on_modify():
+            reload(threedframe.joint)
+            reload(threedframe.utils)
+            try:
+                threedframe.joint.generate(Path(model_data), vertices, *args, **kwargs)
+            except Exception as e:
+                print(e)
+
+        watcher = threedframe.utils.FileModifiedWatcher(_on_modify)
+        watcher.run()
 
 
 @main.command()
@@ -51,7 +66,7 @@ def compute(model_path: Path):
     script_path = Path(__file__).parent / "compute.py"
     assert script_path.exists(), "Failed to find script path."
     data_path = model_path.with_suffix(".pkl")
-    utils.exec_blender_script(Path(model_path), script_path, data_path)
+    threedframe.utils.exec_blender_script(Path(model_path), script_path, data_path)
     print("[bold green]✔ Done!")
     print(f"[bold white]Data written to: [cyan]{data_path.absolute()}")
 

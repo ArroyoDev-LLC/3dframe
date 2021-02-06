@@ -11,6 +11,8 @@ from rich.console import RenderableType
 from rich.progress import ProgressColumn, SpinnerColumn, Task, TextColumn
 from rich.text import Text
 from solid import OpenSCADObject, linear_extrude, resize, text, translate, union
+from watchdog.events import PatternMatchingEventHandler
+from watchdog.observers import Observer
 
 
 class ComputeTestResultsColumn(ProgressColumn):
@@ -155,3 +157,42 @@ def label_size(
     if any(restvals):
         result = translate(restvals)(result)
     return result, resize_vals
+
+
+class FileModifiedPatternEvent(PatternMatchingEventHandler):
+    def __init__(self, glob_pattern: str, on_modify: Callable):
+        super().__init__(patterns=glob_pattern)
+        self._on_modified = on_modify
+
+    def on_modified(self, event):
+        print(event)
+        self._on_modified()
+
+
+class FileModifiedWatcher:
+    def __init__(self, on_modify: Callable):
+        self.src_path = Path(__file__).parent
+        self.event_handler = FileModifiedPatternEvent("*.py", on_modify)
+        self.event_observer = Observer()
+
+    def start(self):
+        self.schedule()
+        self.event_observer.start()
+
+    def stop(self):
+        self.event_observer.stop()
+        self.event_observer.join()
+
+    def schedule(self):
+        self.event_observer.schedule(self.event_handler, str(self.src_path), recursive=True)
+
+    def run(self):
+        self.start()
+        try:
+            while True:
+                print("Watching for file changes...")
+                time.sleep(30)
+        except KeyboardInterrupt:
+            self.stop()
+
+
