@@ -57,6 +57,7 @@ def assemble_vertex(vidx: int, debug=False, extrusion_height=None, solid=False):
     v_data = MODEL_DATA.vertices[vidx]
 
     base_fix = square(FIXTURE_SIZE, center=True)
+    base_inner = square(FIXTURE_SIZE - 6, center=True)
 
     for edge in v_data.edges:
         print("")
@@ -80,21 +81,17 @@ def assemble_vertex(vidx: int, debug=False, extrusion_height=None, solid=False):
             Point3(extrusion_height / 3, extrusion_height / 3, extrusion_height / 3)
             * norm_direction
         )
-        label_point = Point3(extrusion_height, extrusion_height, extrusion_height) * norm_direction
-        pin_point = (
-            Point3(extrusion_height / 2, extrusion_height / 2, extrusion_height / 2)
-            * norm_direction
-        )
 
         fix = base_fix.copy()
         inspect_fix = base_fix.copy()
+        inner_fix = base_inner.copy()
+
         if not solid:
             fix = dotSCAD.hollow_out.hollow_out(shell_thickness=3)(fix)
 
         fix = linear_extrude(extrusion_height)(fix)
+        inner_fix = linear_extrude(extrusion_height + 10)(inner_fix)
         inspect_fix = linear_extrude(extrusion_height)(inspect_fix)
-
-        print(extrusion_height / 3)
 
         # Calc distance from origin (aka, joint vertex) to determine how much less of an edge we need.
         dist = Point(*ORIGIN).distance(Point(midpoint.x, midpoint.y, midpoint.z))
@@ -106,6 +103,7 @@ def assemble_vertex(vidx: int, debug=False, extrusion_height=None, solid=False):
         )
 
         fix = transform_to_point(fix, dest_point=midpoint, dest_normal=reflected_dir)
+        inner_fix = transform_to_point(inner_fix, dest_point=midpoint, dest_normal=reflected_dir)
         inspect_fix = transform_to_point(
             inspect_fix, dest_point=midpoint, dest_normal=reflected_dir
         )
@@ -124,76 +122,28 @@ def assemble_vertex(vidx: int, debug=False, extrusion_height=None, solid=False):
             verts_by_face = inspect_data["verts_by_face"]
             face_verts = inspect_data["verts"]
 
-        first_verts = [Point(i) for i in face_verts]
+        if debug:
+            fix.modifier = "#"
+        yield utils.JointFixture(
+            scad_object=fix,
+            inspect_object=inspect_fix,
+            inner_object=inner_fix,
+            model_edge=edge,
+            model_vertex=MODEL_DATA.get_edge_target_vertex(edge),
+            dest_point=(
+                midpoint.x,
+                midpoint.y,
+                midpoint.z,
+            ),
+            dest_normal=(
+                reflected_dir.x,
+                reflected_dir.y,
+                reflected_dir.z,
+            ),
+            inspect_data=inspect_data,
+        )
 
-        first_face_plane = Plane(*first_verts)
-        last_face_plane = None
-        last_face_verts = None
-        last_dist = 0
-        for fidx, verts in verts_by_face:
-            test_verts = [Point(v) for v in verts]
-            test_plane = Plane(*test_verts)
-            dist = first_face_plane.distance(test_plane)
-            print(fidx, verts)
-            print(f"first to {fidx}", dist)
-            if abs(Float(dist)) >= abs(Float(last_dist)):
-                last_dist = dist
-                last_face_plane = test_plane
-                last_face_verts = test_verts
 
-        cp1 = Point(last_face_verts[0])
-        fcp1 = first_verts[0]
-        coplaner_points: List[Point] = [
-            Point(i) for i in last_face_verts[1:] if Point.are_coplanar(cp1, Point(i), fcp1)
-        ]
-        print("Coplaner:", coplaner_points)
-        cp2 = max(coplaner_points, key=lambda p: cp1.canberra_distance(p))
-
-        face_midpoint = cp1.midpoint(cp2)
-
-        if not solid:
-            # pin hole for small nail or M3
-            pz = translate([face_midpoint.x, face_midpoint.y, face_midpoint.z])(sphere(r=5))
-            pz.modifier = "%"
-            fix += pz
-            for point in last_face_verts:
-                p = translate(point)(sphere(r=5))
-                p.modifier = "%"
-                fix += p
-
-        print("loaded inspect data:", inspect_data)
-
-        if not solid:
-            label = label_size(
-                f"{MODEL_DATA.get_edge_target_vertex(edge).label}\n{round(edge.length_in, 2)}",
-                halign="center",
-                valign="center",
-                depth=1.5,
-                size=6,
-                width=9,
-                center=False,
-            )[0]
-            np_reflected_dir = np.array((reflected_dir.x, reflected_dir.y, reflected_dir.z))
-            np_up_vec = np.array((0, 0, 1))
-            perp_normal = vg.perpendicular(np_reflected_dir, np_up_vec)
-            print("Perp Normal: ", perp_normal)
-
-            targ_normal = BACK_VEC
-            slide_dir = forward
-
-            abs_y = abs(midpoint.y)
-            abs_x = abs(midpoint.x)
-            abs_z = abs(midpoint.z)
-            if abs_y >= abs_x and abs_y >= abs_z:
-                targ_normal = LEFT_VEC
-                slide_dir = right
-
-            label = transform_to_point(
-                label, dest_point=label_point, dest_normal=targ_normal, src_normal=reflected_dir
-            )
-            label = slide_dir(extrusion_height / 4 + 1.2)(label)
-
-            fix -= label
 
         if debug:
             fix.modifier = "#"
