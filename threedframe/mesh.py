@@ -100,6 +100,34 @@ def collect_verts(mesh_path: Path, out_path: Path):
     )
 
 
+def iter_mesh_faces(mesh):
+    face_norms = mesh.get_face_attribute("face_normal").tolist()
+    face_areas = mesh.get_face_attribute("face_area").tolist()
+    face_centroids = mesh.get_face_attribute("face_centroid").tolist()
+    for fidx, face in enumerate(mesh.faces):
+        normal = face_norms[fidx]
+        area = face_areas[fidx]
+        centroid = face_centroids[fidx]
+        yield dict(
+            fidx=fidx, vertex_indices=face.tolist(), normal=normal, area=area[0], centroid=centroid
+        )
+
+
+def iter_mesh_vertices(mesh):
+    vertex_norms = mesh.get_vertex_attribute("vertex_normal").tolist()
+    for vidx, vertex in enumerate(mesh.vertices):
+        vert = tuple(vertex)
+        vert_normal = vertex_norms[vidx]
+        yield dict(vidx=vidx, point=vert, normal=vert_normal)
+
+
+def analyze_mesh(mesh_path: Path, out_path: Path):
+    mesh = load_mesh(mesh_path)
+
+    mesh_data = dict(faces=list(iter_mesh_faces(mesh)), vertices=list(iter_mesh_vertices(mesh)))
+    out_path.write_text(json.dumps(mesh_data))
+
+
 if __name__ == "__main__":
     CMD = sys.argv[1]
     if CMD == "inspect_core":
@@ -112,3 +140,8 @@ if __name__ == "__main__":
         mesh_path = MODELS / sys.argv[2].strip()
         out_path = MODELS / sys.argv[3].strip()
         collect_verts(mesh_path, out_path)
+
+    if CMD == "analyze":
+        mesh_path = MODELS / sys.argv[2].strip()
+        out_path = MODELS / sys.argv[3].strip()
+        analyze_mesh(mesh_path, out_path)
