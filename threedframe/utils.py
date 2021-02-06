@@ -349,3 +349,10 @@ def find_missing_rect_vertex(pa: S.Point3D, pb: S.Point3D, pc: S.Point3D) -> S.P
     return S.Point3D(*pd_pts)
 
 
+def find_center_of_gravity(*points: Sequence[S.Point3D]) -> S.Point3D:
+    """Find the barycenter of X num of points."""
+    pts_range = len(points)
+    x_coord = sum([p.x for p in points]) / pts_range
+    y_coord = sum([p.y for p in points]) / pts_range
+    z_coord = sum([p.z for p in points]) / pts_range
+    return S.Point3D(x_coord, y_coord, z_coord)
