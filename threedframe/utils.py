@@ -269,6 +269,34 @@ class MeshData:
         return find_center_of_gravity(*face_mps)
 
 
+@dataclass
+class JointFixture:
+    """Joint Fixture item."""
+
+    # OpenSCAD Object.
+    scad_object: OpenSCADObject
+    # OpenSCAD inspection object (no hollow).
+    inspect_object: OpenSCADObject
+    # Inner fixture Object (the inner shell).
+    inner_object: OpenSCADObject
+    # Edge item of fixture.
+    model_edge: ModelEdge
+    # Vertex item of fixture.
+    model_vertex: ModelVertex
+    # Destination point of fixture.
+    dest_point: Tuple[float, float, float]
+    # Destination normal of fixture.
+    dest_normal: Tuple[float, float, float]
+    # Inspect data (deprecated)
+    inspect_data: Dict
+    # Mesh Data of inspect object.
+    inspect_mesh: MeshData = None
+
+    def __post_init__(self):
+        if not self.inspect_mesh:
+            self.inspect_mesh = analyze_scad(self.inspect_object)
+
+
 def round_point(point: Point3, n_digits=2):
     """Round a given 3d point."""
     p = point.copy()
