@@ -24,7 +24,7 @@ include = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.7"
 # docs extras
 sphinx = { version = "^3.4.3", optional = true }
 sphinx-autodoc-typehints = { version = "^1.11.1", optional = true }
@@ -35,6 +35,9 @@ click = "^7.1.2"
 rich = "^9.10.0"
 solidpython = "^1.0.4"
 numpy = "^1.19.5"
+watchdog = "^1.0.2"
+vg = "^1.9.0"
+sympy = "^1.7.1"
 
 [tool.poetry.dev-dependencies]
 autoflake = "^1.4"
@@ -95,6 +98,8 @@ profile = "black"
 src_paths = ["threedframe"]
 line_length = 100
 honor_noqa = true
+length_sort = true
+skip_glob = ["threedframe/lib/**/*"]
 
 [tool.pytest.ini_options]
 collect_ignore = ['setup.py']
@@ -111,5 +116,5 @@ exclude_lines = """
 
 
 [build-system]
-requires = ["poetry>=1.0.0"]
+requires = ["setuptools>=30.3.0,<50","poetry>=1.0.0"]
 build-backend = "poetry.masonry.api"
