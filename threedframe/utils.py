@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 
 """3DFrame Model Generator Utils."""
+import string
 import subprocess as sp
-from dataclasses import dataclass
+from typing import Dict, List, Tuple, Union, Callable, Iterator, Sequence
 from pathlib import Path
-from typing import Tuple
+from tempfile import TemporaryDirectory
+from dataclasses import field, dataclass
 
 from euclid3 import Point3
 from rich.console import RenderableType
@@ -55,12 +57,81 @@ class ParentSpinnerColumn(SpinnerColumn):
         return Text.from_markup("")
 
 
+def label_generator() -> Iterator[str]:
+    """Generates labels for vertices.
+
+    Yields: 'AA', 'AB', 'AC'...'ZW', 'ZY', 'ZZ'
+
+    """
+    base_charmap = iter(string.ascii_uppercase)
+    _label_charmap = iter(string.ascii_uppercase)
+    _base_label = None
+    while True:
+        if not _base_label:
+            _base_label = next(base_charmap)
+        try:
+            label = next(_label_charmap)
+        except StopIteration:
+            try:
+                _base_label = next(base_charmap)
+            except StopIteration:
+                break
+            _label_charmap = iter(string.ascii_uppercase)
+            label = next(_label_charmap)
+        yield f"{_base_label}{label}"
+
+
+MODEL_LABELS = label_generator()
+
+
 @dataclass
-class ModelInfo:
+class ModelData:
     """Computed model info."""
 
+    # Total number of vertices in model.
     num_vertices: int
+    # Total number of edges in model.
     num_edges: int
+    # Vertices.
+    vertices: Dict[int, "ModelVertex"]
+
+    def get_edge_target_vertex(self, edge: "ModelEdge") -> "ModelVertex":
+        """Retrieve an edges target vertex."""
+        vertex = self.vertices[edge.target_vidx]
+        return vertex
+
+
+@dataclass
+class ModelEdge:
+    """Computed edge info."""
+
+    # Edge index.
+    eidx: int
+    # Edge length.
+    length: float
+    # Joint vertex index.
+    joint_vidx: int
+    # Target vertex index.
+    target_vidx: int
+    # Vector FROM target vertex into joint.
+    vector_ingress: Tuple[float, float, float]
+
+    @property
+    def length_in(self) -> float:
+        """Length in inches."""
+        return self.length / 25.4
+
+
+@dataclass
+class ModelVertex:
+    """Computed Vertex info."""
+
+    # Vertex index.
+    vidx: int
+    # Edge map.
+    edges: List[ModelEdge]
+    # Generated label for vertex.
+    label: str = field(default_factory=lambda: next(MODEL_LABELS))
 
 
 def round_point(point: Point3, n_digits=2):
