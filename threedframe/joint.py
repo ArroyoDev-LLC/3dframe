@@ -184,10 +184,41 @@ def assemble_vertex(vidx: int, debug=False, extrusion_height=None, solid=False):
         )
 
 
+def label_fixtures(
+    inspect_fixtures: List[utils.JointFixture], **kwargs
+) -> Iterator[utils.JointFixture]:
+    debug = kwargs.pop("debug", False)
+    for fidx, fixture in enumerate(inspect_fixtures):
+        label = label_size(
+            f"{fixture.model_vertex.label}\n{round(fixture.model_edge.length_in, 2)}",
+            halign="center",
+            valign="center",
+            depth=1,
+            size=6,
+            width=9,
+            center=True,
+        )[0]
+        oth_fixtures = deepcopy(inspect_fixtures)
+        oth_fixtures.pop(fidx)
+        label_point, label_normal, label_face = locate_vertex_label_pos(fixture, oth_fixtures)
 
         if debug:
-            fix.modifier = "#"
-        yield fix, midpoint, inspect_data
+            # Create spheres to represent the corners used for finding the label pos.
+            lcolor = utils.rand_rgb_color()
+            label_verts = label_face.euclid_vertices
+            rec_vert = label_face.missing_rect_vertex
+            label_verts.append(Point3(rec_vert.x, rec_vert.y, rec_vert.z))
+            for p in label_verts:
+                fixture.scad_object += translate(tuple(p))(color(lcolor)(sphere(r=2)))
+
+        label = transform_to_point(
+            label,
+            dest_point=label_point,
+            dest_normal=label_normal.reflect(label_normal),
+            src_normal=Point3(*fixture.dest_normal),
+        )
+        fixture.scad_object -= label
+        yield fixture
 
 
 def find_core_vertice_cubes(fixture_datasets):
