@@ -175,6 +175,61 @@ def exec_blender_script(model_path: Path, script_path: Path, out_path: Path):
     return sp.run(_cmd, check=True, env=_cmd_env)
 
 
+def exec_pymesh(*args, host_mount: Path):
+    pkg_root = Path(__file__).parent
+    _pkg_mount = [str(pkg_root.absolute()), "/script"]
+    _vol_mount = [str(host_mount.absolute()), "/models"]
+    _cmd = [
+        "/usr/bin/docker",
+        "run",
+        "-it",
+        "--rm",
+        "-v",
+        ":".join(_vol_mount),
+        "-v",
+        ":".join(_pkg_mount),
+        "pymesh/pymesh",
+        "python3",
+        "/script/mesh.py",
+    ]
+    _cmd.extend(args)
+    return sp.run(_cmd, check=True)
+
+
+def write_scad(element: OpenSCADObject, path: Path, segments=48):
+    out_render = scad_render(element, file_header=f"$fn = {segments};")
+    path.write_text(out_render)
+    return out_render
+
+
+class TemporaryScadWorkspace(TemporaryDirectory):
+    def __init__(
+        self, *args, scad_objs: List[Tuple[str, OpenSCADObject, Union[str, None]]], **kwargs
+    ):
+        super().__init__(*args, **kwargs)
+        self.scad_objs = scad_objs
+        self.path: Path = Path(self.name)
+        self.proc = None
+
+    def _stream_proc(self, proc: sp.Popen):
+        for line in iter(proc.stderr.readline, b""):
+            outline = line.decode().rstrip("\n")
+            print(f"[grey42]{outline}")
+
+    def __enter__(self) -> Tuple[Path, List[Tuple[str, Path, Union[Path, None]]]]:
+        files = []
+        for name, obj, mesh_format in self.scad_objs:
+            obj_path = (self.path / name).with_suffix(".scad")
+            render_path = None
+            write_scad(obj, obj_path)
+            if mesh_format:
+                render_path = obj_path.with_suffix(f".{mesh_format}")
+                self.proc = openscad_cmd("-o", str(render_path), str(obj_path))
+                self._stream_proc(self.proc)
+            files.append((name, obj_path, render_path))
+        return self.path, files
+
+
 # Fixed version of label size.
 def label_size(
     a_str: str,
