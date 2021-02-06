@@ -8,12 +8,12 @@ import shutil
 import tempfile
 from os import PathLike
 
-import vg
 import numpy as np
+import vg
 from rich import print, progress
 from solid import *
-from sympy import Float, Plane, Point
 from solid.utils import *
+from sympy import Float, Plane, Point
 
 from threedframe import utils
 from threedframe.utils import ModelData, label_size
@@ -237,18 +237,89 @@ def assembly(vertex: int, *args, **kwargs):
     a = union()
 
     progress = kwargs.pop("progress", None)
-    fixture_points: List[Point3] = []
-    fixtures: List[OpenSCADObject] = []
-    for fix, point in assemble_vertex(vertex, *args, **kwargs):
-        fixtures.append(fix)
-        if point:
-            fixture_points.append(point)
+    debug = kwargs.get("debug", False)
 
-    core = assemble_core(vertex, fixture_points, *args, **kwargs, progress=progress)
-    for fix in fixtures:
-        core += fix
+    fixtures = list(assemble_vertex(vertex, debug=False, solid=False))
+    normal_fixtures = [f[0] for f in fixtures]
+
+    solid_fixture_data = list(assemble_vertex(vertex, debug=False, solid=True))
+    solid_fixtures = [f[0] for f in solid_fixture_data]
+    fixture_datas = [f[2] for f in solid_fixture_data]
+
+    core_vertice_cubes = find_core_vertice_cubes(fixture_datas)
+
+    core = hull()(*core_vertice_cubes)
+
+    inspect_core = core.copy()
+    inspect_joint = core.copy()
+    for f in solid_fixtures:
+        inspect_joint += f
+
+    inspect_data = None
+    scad_inspects = [
+        ("core", union()(inspect_core), "stl"),
+        ("joint", union()(inspect_joint), "stl"),
+    ]
+    with utils.TemporaryScadWorkspace(scad_objs=scad_inspects) as tmpdata:
+        tmp_path, tmp_files = tmpdata
+        core_files = tmp_files[0]
+        joint_files = tmp_files[1]
+        utils.exec_pymesh(
+            "inspect_core",
+            core_files[-1].name,
+            joint_files[-1].name,
+            "out.json",
+            host_mount=tmp_path,
+        )
+        inspect_data = json.loads((tmp_path / "out.json").read_text())
+
+    print("core inspect data:", inspect_data)
+    face_verts = inspect_data["face_verts"]
+    face_norm = Vector3(*inspect_data["face_norm"])
+    face_verts = [Point(*v) for v in face_verts]
+
+    # Use center of gravity instead of canberra distance b/c face verts could only be 3 points.
+    face_midpoint = utils.find_center_of_gravity(*face_verts)
+
+    if debug:
+        # face points for text label
+        for vert in [*face_verts, face_midpoint]:
+            core += translate(vert)(color("red")(cube(1, center=True)))
+
+    text_el, _ = label_size(
+        f"{MODEL_DATA.vertices[vertex].label}",
+        halign="center",
+        valign="center",
+        size=6,
+        width=9,
+        depth=0.5,
+        center=True,
+    )
+
+    text_el = transform_to_point(
+        text_el,
+        dest_point=Point3(face_midpoint.x, face_midpoint.y, face_midpoint.z),
+        dest_normal=face_norm.reflect(face_norm),
+    )
+
+    core -= text_el
+
+    for f in normal_fixtures:
+        if debug:
+            a += f
+        else:
+            core += f
+
+    # Debug Core Hull vertices
+    if debug:
+        core.modifier = "*"
+        core = color("blue")(core)
+        for vert_cube in core_vertice_cubes:
+            vert_cube.modifier = "%"
+            a += vert_cube
 
     a += core
+
     if kwargs.get("debug", False):
         a += grid_plane(plane="xyz", grid_unit=inch(1))
     return a
@@ -259,22 +330,24 @@ def create_model(vidx: int, *args, **kwargs):
     scad_render_to_file(a, file_header=f"$fn = {SEGMENTS};", include_orig_code=True)
 
 
-def load_model(model_path: Path) -> utils.ModelInfo:
+def load_model(model_path: Path) -> utils.ModelData:
     global MODEL_DATA, MODEL_DATA_PATH
     MODEL_DATA_PATH = model_path
-    data: utils.ModelInfo = pickle.loads(MODEL_DATA_PATH.read_bytes())
-    MODEL_DATA = data["data"]
-    return data["info"]
+    data: utils.ModelData = pickle.loads(MODEL_DATA_PATH.read_bytes())
+    MODEL_DATA = data
+    return data
 
 
 def generate(
     model_path: PathLike, vertices=tuple(), debug=False, render=False, keep=False, file_type="stl"
 ):
     """Generate joint model from given vertex."""
-    info = load_model(model_path)
+    model_data = load_model(model_path)
     if not any(vertices):
-        vertices = tuple(range(info.num_vertices))
-        print(f"[bold orange]Rendering: {info.num_edges} edges | {info.num_vertices} vertices")
+        vertices = tuple(range(model_data.num_vertices))
+        print(
+            f"[bold orange]Rendering: {model_data.num_edges} edges | {model_data.num_vertices} vertices"
+        )
         print(vertices)
     output_dir = ROOT.parent / "renders"
     output_dir.mkdir(exist_ok=True)
@@ -287,10 +360,10 @@ def generate(
         utils.ComputeTestResultsTextColumn(),
         transient=True,
     ) as prog:
-        task = prog.add_task("[green]Generating Models...", total=info.num_vertices)
+        task = prog.add_task("[green]Generating Models...", total=model_data.num_vertices)
         for vertex in vertices:
-            if not render:
-                return create_model(vertex, debug=debug)
+            # if not render:
+            #     return create_model(vertex, debug=debug)
             a = assembly(vertex, debug=debug, progress=prog)
             _, file_name = tempfile.mkstemp(suffix=".scad")
             file_path = Path(tempfile.gettempdir()) / file_name
@@ -298,11 +371,12 @@ def generate(
             file_path.write_text(out_render)
             render_name = f"joint-v{vertex}.{file_type}"
             render_path = output_dir / render_name
-            proc = utils.openscad_cmd("-o", str(render_path), str(file_path))
-            for line in iter(proc.stderr.readline, b""):
-                outline = line.decode().rstrip("\n")
-                prog.console.print(f"[grey42]{outline}")
-            if keep:
+            if render:
+                proc = utils.openscad_cmd("-o", str(render_path), str(file_path))
+                for line in iter(proc.stderr.readline, b""):
+                    outline = line.decode().rstrip("\n")
+                    prog.console.print(f"[grey42]{outline}")
+            if keep or not render:
                 scad_path = render_path.with_suffix(".scad")
                 shutil.move(file_path, scad_path)
             prog.update(task, advance=1)
