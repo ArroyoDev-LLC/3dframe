@@ -1,19 +1,18 @@
 # -*- coding: utf-8 -*-
 
 """3DFrame joint module."""
-
 import json
 import pickle
 import shutil
 import tempfile
 from os import PathLike
+from copy import deepcopy
+from typing import Iterator
 
-import numpy as np
-import vg
 from rich import print, progress
 from solid import *
+from sympy import Point
 from solid.utils import *
-from sympy import Float, Plane, Point
 
 from threedframe import utils
 from threedframe.utils import ModelData, label_size
@@ -51,6 +50,47 @@ FIXTURE_HOLE_SIZE = SUPPORT_SIZE + GAP
 FIXTURE_SIZE = FIXTURE_HOLE_SIZE + FIXTURE_WALL_THICKNESS
 
 FIXTURE_ANGLE_FUDGE = 6.3  # Fudge value for fixture angles length.
+
+
+def locate_vertex_label_pos(
+    target_fixture: utils.JointFixture, other_fixtures: List[utils.JointFixture]
+) -> Tuple[Point3, Vector3, utils.MeshFace]:
+    """Locate appropriate position for fixture label.
+
+    First, we simply check for faces larger than then first face (closest to origin).
+    This will provide us with one of the 'side' longer faces.
+
+    Then, to accommodate overlapping fixtures (which normally may place a label "inside" the overlap,
+    leading to it being removed later), we calculate the absolute midpoints of all other fixtures
+    and ensure that the target face is at least a fixtures size length away from it.
+
+    This ensures the label will always be visible and in the same place.
+
+    """
+    # first face is closest to origin.
+    first_face = target_fixture.inspect_mesh.faces[0]
+    # calculate the absolute midpoints for all other fixtures besides the target.
+    other_centers = [f.inspect_mesh.calc_absolute_midpoint() for f in other_fixtures]
+
+    last_area = first_face.area
+    label_face = None
+    for face in target_fixture.inspect_mesh.faces:
+        if face.area > last_area:
+            # ensure the taxicab distance ( Σ{x-dist, y-dist} ) is at least a fixture away.
+            oth_boundaries = [
+                face.centroid_point.taxicab_distance(f) > FIXTURE_SIZE for f in other_centers
+            ]
+            print("Fixture label face boundary checks:", oth_boundaries)
+            if all(oth_boundaries):
+                last_area = face.area
+                label_face = face
+
+    # now that we have found an appropriate face, find the center of it to place the label.
+    face_midpoint = utils.find_center_of_gravity(
+        *label_face.sympy_vertices, label_face.missing_rect_vertex
+    )
+    print("Label face area:", label_face.area)
+    return Point3(*tuple(face_midpoint)), label_face.normal_vector, label_face
 
 
 def assemble_vertex(vidx: int, debug=False, extrusion_height=None, solid=False):
