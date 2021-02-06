@@ -525,3 +525,8 @@ def find_center_of_gravity(*points: Sequence[S.Point3D]) -> S.Point3D:
     y_coord = sum([p.y for p in points]) / pts_range
     z_coord = sum([p.z for p in points]) / pts_range
     return S.Point3D(x_coord, y_coord, z_coord)
+
+
+def rand_rgb_color() -> List[int]:
+    """Generate random RGB color."""
+    return list(np.random.random(size=3) * 256)
