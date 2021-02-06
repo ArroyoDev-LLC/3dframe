@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 """3DFrame Model Generator Utils."""
+import sys
+import time
 import string
 import subprocess as sp
 from typing import Dict, List, Tuple, Union, Callable, Iterator, Sequence
@@ -8,11 +10,13 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from dataclasses import field, dataclass
 
+import sympy as S
+from rich import print
+from solid import OpenSCADObject, text, union, resize, translate, scad_render, linear_extrude
 from euclid3 import Point3
-from rich.console import RenderableType
-from rich.progress import ProgressColumn, SpinnerColumn, Task, TextColumn
 from rich.text import Text
-from solid import OpenSCADObject, linear_extrude, resize, text, translate, union
+from rich.console import RenderableType
+from rich.progress import Task, TextColumn, SpinnerColumn, ProgressColumn
 from watchdog.events import PatternMatchingEventHandler
 from watchdog.observers import Observer
 
@@ -160,9 +164,14 @@ def exec_blender_script(model_path: Path, script_path: Path, out_path: Path):
         "--python",
         str(script_path.absolute()),
     ]
+    py_path = ":".join(sys.path)
     _cmd_env = dict(
-        THREEDFRAME_OUT=str(out_path.absolute()), PYTHONPATH=str(Path(__file__).parent.parent)
+        THREEDFRAME_OUT=str(out_path.absolute()),
+        PYTHONPATH=py_path,
+        BLENDER_SYSTEM_PYTHON=sys.executable,
     )
+    print(_cmd_env)
+    print(sys.path)
     return sp.run(_cmd, check=True, env=_cmd_env)
 
 
