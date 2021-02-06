@@ -4,8 +4,8 @@
 """3dframe pymesh interactions."""
 
 import pymesh  # noqa
-import json
 import sys
+import json
 from pathlib import Path
 
 MODELS = Path("/models")
@@ -13,8 +13,12 @@ MODELS = Path("/models")
 
 def load_mesh(path: Path) -> "threedframe.lib.PyMesh.python.Mesh.Mesh":
     mesh = pymesh.load_mesh(str(path))
+    mesh, _ = pymesh.remove_duplicated_faces(mesh)
+    mesh, _ = pymesh.remove_duplicated_vertices(mesh)
     mesh.add_attribute("face_area")
     mesh.add_attribute("face_normal")
+    mesh.add_attribute("face_centroid")
+    mesh.add_attribute("vertex_normal")
     mesh.enable_connectivity()
     return mesh
 
