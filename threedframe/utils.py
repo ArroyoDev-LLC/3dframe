@@ -361,6 +361,16 @@ class TemporaryScadWorkspace(TemporaryDirectory):
         return self.path, files
 
 
+def analyze_scad(obj: OpenSCADObject) -> MeshData:
+    scad_obj = [("target", union()(obj), "stl")]
+    data = None
+    with TemporaryScadWorkspace(scad_objs=scad_obj) as tmpdata:
+        tmp_path, tmp_files = tmpdata
+        exec_pymesh("analyze", tmp_files[0][-1].name, "out.json", host_mount=tmp_path)
+        data = json.loads((tmp_path / "out.json").read_text())
+    return MeshData.from_dict(data)
+
+
 # Fixed version of label size.
 def label_size(
     a_str: str,
