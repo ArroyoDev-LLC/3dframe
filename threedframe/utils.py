@@ -137,6 +137,10 @@ class ModelVertex:
     vidx: int
     # Edge map.
     edges: List[ModelEdge]
+    # Vertex Point.
+    point: Tuple[float, float, float]
+    # Vertex Point normal.
+    point_normal: Tuple[float, float, float]
     # Generated label for vertex.
     label: str = field(default_factory=lambda: next(MODEL_LABELS))
 

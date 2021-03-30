@@ -86,7 +86,21 @@ for vert in bm.verts:
                 (relative_vector.x, relative_vector.y, relative_vector.z),
             )
         )
-    vertex_info = ModelVertex(vert.index, edges=joint_edges)
+    vert_normal = vert.normal
+    vertex_info = ModelVertex(
+        vert.index,
+        edges=joint_edges,
+        point=(
+            vert.co.x,
+            vert.co.y,
+            vert.co.z,
+        ),
+        point_normal=(
+            vert_normal.x,
+            vert_normal.y,
+            vert_normal.z,
+        ),
+    )
     vertices[vert.index] = vertex_info
 
 model_info = ModelData(num_edges=len(bm.edges), num_vertices=len(bm.verts), vertices=vertices)
