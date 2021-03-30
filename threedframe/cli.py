@@ -34,13 +34,27 @@ def main():
     "model_data",
     type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True),
 )
-@click.argument("vertices", type=int, nargs=-1)
+@click.argument("vertices", type=str, nargs=-1)
 def generate(model_data, vertices=tuple(), watch=False, *args, **kwargs):
     """Generate joint model from given vertex."""
-    if not any(vertices) and not vertices == tuple([0]):
+    print(vertices)
+    _verts = vertices
+    if not any(vertices) and not vertices == tuple([0]) and not vertices == tuple(["0"]):
         print("[bold orange]No vertices were provided.")
         click.confirm("Would you like to render ALL vertices?", abort=True)
-    threedframe.joint.generate(Path(model_data), vertices, *args, **kwargs)
+    else:
+        _verts = []
+        for v in vertices:
+            if "-" in v:
+                rng = [int(i) for i in v.split("-")]
+                final = rng.pop(-1)
+                rng.append(final + 1)
+                for pv in range(*rng):
+                    _verts.append(int(pv))
+            else:
+                _verts.append(int(v))
+        click.confirm(f"Render {' '.join([str(i) for i in _verts])}?", abort=True)
+    threedframe.joint.generate(Path(model_data), _verts, *args, **kwargs)
     if watch:
 
         def _on_modify():
