@@ -193,7 +193,7 @@ def label_fixtures(
             f"{fixture.model_vertex.label}\n{round(fixture.model_edge.length_in, 2)}",
             halign="center",
             valign="center",
-            depth=1,
+            depth=1.5,
             size=6,
             width=9,
             center=True,
@@ -316,7 +316,7 @@ def assembly(vertex: int, *args, **kwargs):
         valign="center",
         size=6,
         width=9,
-        depth=0.5,
+        depth=1.5,
         center=True,
     )
 
