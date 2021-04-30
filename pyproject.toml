@@ -55,6 +55,7 @@ docformatter = "^1.4"
 pre-commit = "^2.10.0"
 pytest-sugar = "^0.9.4"
 "fake-bpy-module-2.91" = "^20201216"
+snapshottest = "^0.6.0"
 
 
 [tool.poetry.extras]

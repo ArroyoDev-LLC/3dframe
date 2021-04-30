@@ -237,3 +237,4 @@ dmypy.json
 .direnv
 !threedframe/lib
 renders
+renders_old
