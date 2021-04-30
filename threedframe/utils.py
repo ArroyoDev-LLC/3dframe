@@ -345,7 +345,6 @@ def exec_pymesh(*args, host_mount: Path):
     _cmd = [
         "/usr/bin/docker",
         "run",
-        "-it",
         "--rm",
         "-v",
         ":".join(_vol_mount),
