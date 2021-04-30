@@ -1,0 +1,37 @@
+# Ignore
+.direnv
+.git
+.github
+.idea
+docs
+tests
+threedframe.egg-info
+threedframe
+.editorconfig
+.envrc
+.gitmodules
+.pre-commit-config.yaml
+.tool-versions
+LICENSE
+Makefile
+README.md
+pyproject.toml
+setup.py
+.gitignore
+data
+.pytest_cache
+renders_old
+renders
+Dockerfile
+
+# Don't ignore
+!pyproject.toml
+!poetry.lock
+!Makefile
+!threedframe
+!tests
+!docs
+!LICENSE
+!data
+!setup.py
+!README.md
