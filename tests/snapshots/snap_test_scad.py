@@ -7,8 +7,6 @@ from snapshottest.file import FileSnapshot
 
 snapshots = Snapshot()
 
-snapshots["test_scad_render 1"] = FileSnapshot("snap_test_scad/test_scad_render 1.scad")
-
 snapshots["test_scad_render[vertices0] 1"] = FileSnapshot(
     "snap_test_scad/test_scad_render[vertices0] 1.scad"
 )

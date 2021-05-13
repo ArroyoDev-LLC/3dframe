@@ -1,5 +1,5 @@
 $fn = 48;
-use </home/bradenmars/projects/work/arroyodev/threedframe/threedframe/lib/dotSCAD/src/hollow_out.scad>
+use </app/threedframe/lib/dotSCAD/src/hollow_out.scad>
 
 
 difference(){
