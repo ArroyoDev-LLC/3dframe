@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 """3DFrame joint module."""
-import json
 import pickle
 import shutil
 import tempfile
@@ -14,6 +13,7 @@ from solid import *
 from sympy import Point
 from solid.utils import *
 
+from threedframe import mesh as meshutil
 from threedframe import utils
 from threedframe.utils import ModelData, label_size
 
@@ -155,10 +155,7 @@ def assemble_vertex(vidx: int, debug=False, extrusion_height=None, solid=False):
             scad_objs=[("fix", union()(inspect_fix), "stl")]
         ) as tmpdata:
             tmp_path, tmp_files = tmpdata
-            utils.exec_pymesh(
-                "collect_verts", tmp_files[0][-1].name, "out.json", host_mount=tmp_path
-            )
-            inspect_data = json.loads((tmp_path / "out.json").read_text())
+            inspect_data = meshutil.collect_verts(tmp_files[0][-1])
             verts_by_face = inspect_data["verts_by_face"]
             face_verts = inspect_data["verts"]
 
@@ -241,7 +238,7 @@ def find_core_vertice_cubes(fixture_datasets):
         face_midpoint = fp_1.midpoint(fp_2)
         for vert in vert_set:
             # First face is the one closest to origin.
-            face_norm = datasets["norms_by_face"]["0"]
+            face_norm = datasets["norms_by_face"][0]
             core_cube = color("red")(cube(1, center=True))
             vert_point = Point(*tuple(vert))
             # Scale corner point with reference to midpoint to 'inset' cubes into corners
@@ -288,14 +285,7 @@ def assembly(vertex: int, *args, **kwargs):
         tmp_path, tmp_files = tmpdata
         core_files = tmp_files[0]
         joint_files = tmp_files[1]
-        utils.exec_pymesh(
-            "inspect_core",
-            core_files[-1].name,
-            joint_files[-1].name,
-            "out.json",
-            host_mount=tmp_path,
-        )
-        inspect_data = json.loads((tmp_path / "out.json").read_text())
+        inspect_data = meshutil.inspect_core(core_files[-1], joint_files[-1])
 
     print("core inspect data:", inspect_data)
     face_verts = inspect_data["face_verts"]
@@ -333,15 +323,10 @@ def assembly(vertex: int, *args, **kwargs):
         if debug:
             a += f
         else:
-            # for sidx, s in enumerate(inner_fixtures):
-            #     if sidx != fidx:
-            #         f -= hole()(s)
             fixture_union += f
 
     for inner_fix in inner_fixtures:
-        # inner_fix = color('red')(inner_fix)
         fixture_union -= hole()(inner_fix)
-        # fixture_union -= hole()(inner_fix)
 
     core += fixture_union
 
@@ -397,8 +382,6 @@ def generate(
     ) as prog:
         task = prog.add_task("[green]Generating Models...", total=model_data.num_vertices)
         for vertex in vertices:
-            # if not render:
-            #     return create_model(vertex, debug=debug)
             a = assembly(vertex, debug=debug, progress=prog)
             _, file_name = tempfile.mkstemp(suffix=".scad")
             file_path = Path(tempfile.gettempdir()) / file_name
