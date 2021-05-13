@@ -1,11 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""3dframe pymesh interactions."""
+"""3dframe pymesh interactions.
+
+TODO: This module used to be hackily copied and executed in a pymesh container,
+needs a lot of cleanup.
+
+"""
 
 import pymesh  # noqa
-import sys
-import json
 from pathlib import Path
 
 MODELS = Path("/models")
@@ -23,7 +26,7 @@ def load_mesh(path: Path) -> "threedframe.lib.PyMesh.python.Mesh.Mesh":
     return mesh
 
 
-def inspect_core(core_path: Path, joint_path: Path, out_path: Path):
+def inspect_core(core_path: Path, joint_path: Path, out_path=None):
     core_mesh = load_mesh(core_path)
     joint_mesh = load_mesh(joint_path)
 
@@ -56,20 +59,14 @@ def inspect_core(core_path: Path, joint_path: Path, out_path: Path):
 
     print("Max face verts:", max_face_verts)
     print("Max face norm:", max_face_normal)
-
-    out_path.write_text(
-        json.dumps(
-            dict(
-                face_verts=max_face_verts,
-                face_norm=max_face_normal,
-                common_verts=list(common_verts),
-            )
-        )
+    return dict(
+        face_verts=max_face_verts,
+        face_norm=max_face_normal,
+        common_verts=list(common_verts),
     )
-    print("Done!")
 
 
-def collect_verts(mesh_path: Path, out_path: Path):
+def collect_verts(mesh_path: Path, out_path=None):
     mesh = load_mesh(mesh_path)
     face_norms = mesh.get_face_attribute("face_normal").tolist()
     verts_by_face = []
@@ -93,11 +90,7 @@ def collect_verts(mesh_path: Path, out_path: Path):
     print("Init vert faces:", init_vert_adj_faces)
     print("Collected verts:", verts)
     print("Face areas:", mesh.get_attribute("face_area"))
-    out_path.write_text(
-        json.dumps(
-            dict(verts=face_vertices, verts_by_face=verts_by_face, norms_by_face=norms_by_face)
-        )
-    )
+    return dict(verts=face_vertices, verts_by_face=verts_by_face, norms_by_face=norms_by_face)
 
 
 def iter_mesh_faces(mesh):
@@ -121,27 +114,8 @@ def iter_mesh_vertices(mesh):
         yield dict(vidx=vidx, point=vert, normal=vert_normal)
 
 
-def analyze_mesh(mesh_path: Path, out_path: Path):
+def analyze_mesh(mesh_path: Path, out_path=None):
     mesh = load_mesh(mesh_path)
 
     mesh_data = dict(faces=list(iter_mesh_faces(mesh)), vertices=list(iter_mesh_vertices(mesh)))
-    out_path.write_text(json.dumps(mesh_data))
-
-
-if __name__ == "__main__":
-    CMD = sys.argv[1]
-    if CMD == "inspect_core":
-        core_path = MODELS / sys.argv[2].strip()
-        joint_path = MODELS / sys.argv[3].strip()
-        out_path = MODELS / sys.argv[4].strip()
-        inspect_core(core_path, joint_path, out_path)
-
-    if CMD == "collect_verts":
-        mesh_path = MODELS / sys.argv[2].strip()
-        out_path = MODELS / sys.argv[3].strip()
-        collect_verts(mesh_path, out_path)
-
-    if CMD == "analyze":
-        mesh_path = MODELS / sys.argv[2].strip()
-        out_path = MODELS / sys.argv[3].strip()
-        analyze_mesh(mesh_path, out_path)
+    return mesh_data
