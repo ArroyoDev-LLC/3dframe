@@ -2,7 +2,6 @@
 
 """3DFrame Model Generator Utils."""
 import sys
-import json
 import time
 import string
 import itertools
@@ -22,6 +21,8 @@ from rich.console import RenderableType
 from rich.progress import Task, TextColumn, SpinnerColumn, ProgressColumn
 from watchdog.events import PatternMatchingEventHandler
 from watchdog.observers import Observer
+
+from threedframe import mesh as meshutil
 
 
 class ComputeTestResultsColumn(ProgressColumn):
@@ -320,7 +321,7 @@ def openscad_cmd(*args) -> sp.Popen:
 def exec_blender_script(model_path: Path, script_path: Path, out_path: Path):
     """Execute blender command."""
     _cmd = [
-        "/usr/bin/blender",
+        "/usr/local/blender/blender",
         str(model_path.absolute()),
         "--background",
         "--python-use-system-env",
@@ -336,26 +337,6 @@ def exec_blender_script(model_path: Path, script_path: Path, out_path: Path):
     print(_cmd_env)
     print(sys.path)
     return sp.run(_cmd, check=True, env=_cmd_env)
-
-
-def exec_pymesh(*args, host_mount: Path):
-    pkg_root = Path(__file__).parent
-    _pkg_mount = [str(pkg_root.absolute()), "/script"]
-    _vol_mount = [str(host_mount.absolute()), "/models"]
-    _cmd = [
-        "/usr/bin/docker",
-        "run",
-        "--rm",
-        "-v",
-        ":".join(_vol_mount),
-        "-v",
-        ":".join(_pkg_mount),
-        "pymesh/pymesh",
-        "python3",
-        "/script/mesh.py",
-    ]
-    _cmd.extend(args)
-    return sp.run(_cmd, check=True)
 
 
 def write_scad(element: OpenSCADObject, path: Path, segments=48):
@@ -394,12 +375,10 @@ class TemporaryScadWorkspace(TemporaryDirectory):
 
 def analyze_scad(obj: OpenSCADObject) -> MeshData:
     scad_obj = [("target", union()(obj), "stl")]
-    data = None
     with TemporaryScadWorkspace(scad_objs=scad_obj) as tmpdata:
         tmp_path, tmp_files = tmpdata
-        exec_pymesh("analyze", tmp_files[0][-1].name, "out.json", host_mount=tmp_path)
-        data = json.loads((tmp_path / "out.json").read_text())
-    return MeshData.from_dict(data)
+        data = meshutil.analyze_mesh(tmp_files[0][-1])
+        return MeshData.from_dict(data)
 
 
 # Fixed version of label size.
