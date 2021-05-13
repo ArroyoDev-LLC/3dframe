@@ -64,3 +64,4 @@ COPY . /app/
 
 RUN pip install --no-cache-dir -e /app/
 ENTRYPOINT /bin/bash
+CMD ['3dframe']
