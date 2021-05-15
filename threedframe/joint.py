@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
-
 """3DFrame joint module."""
+
 import pickle
 import shutil
 import tempfile
@@ -15,41 +14,14 @@ from solid.utils import *
 
 from threedframe import mesh as meshutil
 from threedframe import utils
+from threedframe.unit import UnitMM
 from threedframe.utils import ModelData, label_size
+from threedframe.config import config
 
 ROOT = Path(__file__).parent
 
 MODEL_DATA_PATH = None
 MODEL_DATA: Optional[ModelData] = None
-
-LIB_DIR = ROOT / "lib"
-MCAD = LIB_DIR / "MCAD"
-
-TAU = 6.2831853071  # 2*PI
-deg = lambda x: 360 * x / TAU
-
-mcad = import_scad(str(Path(ROOT / "lib/MCAD")))
-dotSCAD = import_scad(str(Path(ROOT / "lib/dotSCAD/src")))
-
-MM = 1
-INCH = 25.4 * MM
-
-inch = lambda x: x * INCH
-
-SEGMENTS = 48
-
-CORE_SIZE = inch(1.4)
-
-# Global Params
-GAP = 0.02  # fudge factor
-
-# Fixture Params
-SUPPORT_SIZE = inch(0.69)  # size of wooden support
-FIXTURE_WALL_THICKNESS = 6  # thickness of support fixture wall
-FIXTURE_HOLE_SIZE = SUPPORT_SIZE + GAP
-FIXTURE_SIZE = FIXTURE_HOLE_SIZE + FIXTURE_WALL_THICKNESS
-
-FIXTURE_ANGLE_FUDGE = 6.3  # Fudge value for fixture angles length.
 
 
 def locate_vertex_label_pos(
@@ -78,7 +50,7 @@ def locate_vertex_label_pos(
         if face.area > last_area:
             # ensure the taxicab distance ( Σ{x-dist, y-dist} ) is at least a fixture away.
             oth_boundaries = [
-                face.centroid_point.taxicab_distance(f) > FIXTURE_SIZE for f in other_centers
+                face.centroid_point.taxicab_distance(f) > config.FIXTURE_SIZE for f in other_centers
             ]
             print("Fixture label face boundary checks:", oth_boundaries)
             if all(oth_boundaries):
@@ -96,20 +68,20 @@ def locate_vertex_label_pos(
 def assemble_vertex(vidx: int, debug=False, extrusion_height=None, solid=False):
     v_data = MODEL_DATA.vertices[vidx]
 
-    base_fix = square(FIXTURE_SIZE, center=True)
-    base_inner = square(FIXTURE_SIZE - 6, center=True)
+    base_fix = square(config.FIXTURE_SIZE, center=True)
+    base_inner = square(config.FIXTURE_SIZE - 6, center=True)
 
     for edge in v_data.edges:
         print("")
-        point = Point3(*[inch(p) for p in edge.vector_ingress])
+        point = Point3(*[UnitMM.inches(p) for p in edge.vector_ingress])
         if debug:
             to_origin: LineSegment3 = point.connect(Point3(0, 0, 0))
             yield draw_segment(to_origin), None
 
-        extrusion_height = extrusion_height or inch(1.5)
+        extrusion_height = extrusion_height or UnitMM(1.5).inches
 
         print("Fixture mag:", point.magnitude())
-        print("Fixture mag - CORE:", point.magnitude() - CORE_SIZE)
+        print("Fixture mag - CORE:", point.magnitude() - config.CORE_SIZE)
         to_origin_line: LineSegment3 = point.connect(Point3(*ORIGIN))
         norm_direction = (point - ORIGIN).normalized()
         print("Normalized dir:", norm_direction)
@@ -127,7 +99,7 @@ def assemble_vertex(vidx: int, debug=False, extrusion_height=None, solid=False):
         inner_fix = base_inner.copy()
 
         if not solid:
-            fix = dotSCAD.hollow_out.hollow_out(shell_thickness=3)(fix)
+            fix = config.dotSCAD.hollow_out.hollow_out(shell_thickness=3)(fix)
 
         fix = linear_extrude(extrusion_height)(fix)
         inner_fix = linear_extrude(extrusion_height + 10)(inner_fix)
@@ -341,7 +313,7 @@ def assembly(vertex: int, *args, **kwargs):
     a += core
 
     if kwargs.get("debug", False):
-        a += grid_plane(plane="xyz", grid_unit=inch(1))
+        a += grid_plane(plane="xyz", grid_unit=UnitMM(1).inches)
     return a
 
 
