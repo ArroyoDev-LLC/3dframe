@@ -48,22 +48,21 @@ class _Config(BaseSettings):
             raise ValueError(f"Missing library: {v}")
         return v
 
-    @validator("MCAD_DIR")
-    def validate_mcad(self):
+    def setup_libs(self):
         with quiet_solid():
             self._mcad = solid.import_scad(str(self.MCAD_DIR))
-
-    @validator("DOTSCAD_DIR")
-    def validate_mcad(self):
-        with quiet_solid():
             self._dotSCAD = solid.import_scad(str(self.DOTSCAD_DIR))
 
     @property
     def mcad(self):
+        if not self._mcad:
+            self.setup_libs()
         return self._mcad
 
     @property
     def dotSCAD(self):
+        if not self._dotSCAD:
+            self.setup_libs()
         return self._dotSCAD
 
     # Model Params

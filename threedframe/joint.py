@@ -73,7 +73,7 @@ def assemble_vertex(vidx: int, debug=False, extrusion_height=None, solid=False):
 
     for edge in v_data.edges:
         print("")
-        point = Point3(*[UnitMM.inches(p) for p in edge.vector_ingress])
+        point = Point3(*[UnitMM(p).inches.value for p in edge.vector_ingress])
         if debug:
             to_origin: LineSegment3 = point.connect(Point3(0, 0, 0))
             yield draw_segment(to_origin), None
@@ -81,7 +81,7 @@ def assemble_vertex(vidx: int, debug=False, extrusion_height=None, solid=False):
         extrusion_height = extrusion_height or UnitMM(1.5).inches
 
         print("Fixture mag:", point.magnitude())
-        print("Fixture mag - CORE:", point.magnitude() - config.CORE_SIZE)
+        print("Fixture mag - CORE:", point.magnitude() - config.CORE_SIZE.value)
         to_origin_line: LineSegment3 = point.connect(Point3(*ORIGIN))
         norm_direction = (point - ORIGIN).normalized()
         print("Normalized dir:", norm_direction)
