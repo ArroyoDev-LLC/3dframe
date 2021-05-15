@@ -25,7 +25,7 @@ setup(
     name="threedframe",
     version="0.0.0",
     description="Generate printable joints to create a real puzzle from any 3d model.",
-    python_requires="==3.*,>=3.7.0",
+    python_requires="==3.*,>=3.8.0",
     project_urls={
         "homepage": "https://github.com/BradenM/threedframe",
         "repository": "https://github.com/BradenM/threedframe",
@@ -102,6 +102,7 @@ setup(
     install_requires=[
         "attrs==20.*,>=20.3.0",
         "click==7.*,>=7.1.2",
+        "loguru==0.*,>=0.5.3",
         "numpy==1.*,>=1.19.5",
         "pydantic==1.*,>=1.8.1",
         "rich==9.*,>=9.10.0",
