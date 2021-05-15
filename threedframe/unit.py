@@ -43,8 +43,11 @@ class Unit:
             setattr(cls, op, partial(cls._do_comp, getattr(operator, op), obj))
         return obj
 
-    def __init__(self, value: Union[int, float]):
-        self.value = value
+    def __init__(self, value: Union[int, float, "Unit"]):
+        if isinstance(value, Unit):
+            self.value = value.value
+        else:
+            self.value = value
 
     def __repr__(self):
         return f"{self.__class__.__name__}(value={self.value})"
@@ -59,9 +62,9 @@ class Unit:
 
     @staticmethod
     def _do_comp(op, a, b):
-        if oth_conv := getattr(b, a.unit_type):
-            return op(a.value, oth_conv.value)
-        return op(a.value, oth_conv.value)
+        if oth_conv := getattr(b, a.unit_type, None):
+            return a.__class__(op(a.value, oth_conv.value))
+        return a.__class__(op(a.value, b))
 
     def __abs__(self):
         return self.__class__(abs(self.value))
