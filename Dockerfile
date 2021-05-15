@@ -1,4 +1,4 @@
-FROM python:3.7 AS build
+FROM python:3.8 AS build
 
 # Python Envs
 ENV PYTHONFAULTHANDLER=1 \
@@ -24,8 +24,39 @@ WORKDIR /wheels
 RUN bash -c "cp /app/dist/* /wheels/ && cp /app/requirements.txt /wheels/ && rm -rf /app"
 
 
+FROM python:3.8 as pymesh
+WORKDIR /root/
+ARG BRANCH="main"
+ARG NUM_CORES=2
 
-FROM pymesh/pymesh:py3.7 AS app-apt
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    git \
+    cmake \
+    libgmp-dev \
+    libmpfr-dev \
+    libgmpxx4ldbl \
+    libboost-dev \
+    libboost-thread-dev \
+    zip unzip patchelf && \
+    apt-get clean && \
+    git clone --single-branch -b $BRANCH https://github.com/PyMesh/PyMesh.git
+
+ENV PYMESH_PATH /root/PyMesh
+ENV NUM_CORES $NUM_CORES
+WORKDIR $PYMESH_PATH
+
+RUN git submodule update --init && \
+    pip install -r $PYMESH_PATH/python/requirements.txt && \
+    ./setup.py bdist_wheel && \
+    rm -rf build_3.7 third_party/build && \
+    python $PYMESH_PATH/docker/patches/patch_wheel.py dist/pymesh2*.whl && \
+    pip install dist/pymesh2*.whl && \
+    python -c "import pymesh; pymesh.test()"
+
+
+FROM pymesh AS app-apt
 
 # Blender deps + openscad
 RUN apt-get update && \
