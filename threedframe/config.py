@@ -9,7 +9,7 @@ import solid
 from pydantic import BaseSettings, validator
 from pydantic.fields import PrivateAttr
 
-from threedframe.unit import Unit, UnitMM
+from threedframe.constant import Constants
 
 __all__ = ["config"]
 
@@ -90,12 +90,12 @@ class _Config(BaseSettings):
         return self._dotSCAD
 
     # Model Params
-    GAP: UnitMM = UnitMM(0.02)  # 3dPrinting fudge factor.
-    CORE_SIZE: Unit = UnitMM(1.4).inches
-    SUPPORT_SIZE: Unit = UnitMM(0.69).inches
-    FIXTURE_WALL_THICKNESS: Unit = UnitMM(6)
-    FIXTURE_HOLE_SIZE: Unit = SUPPORT_SIZE + GAP
-    FIXTURE_SIZE: Unit = FIXTURE_HOLE_SIZE + FIXTURE_WALL_THICKNESS
+    GAP: float = 0.02  # 3dPrinting fudge factor.
+    CORE_SIZE: float = 1.4 * Constants.INCH
+    SUPPORT_SIZE: float = 0.69 * Constants.INCH
+    FIXTURE_WALL_THICKNESS: float = 6.0
+    FIXTURE_HOLE_SIZE: float = SUPPORT_SIZE + GAP
+    FIXTURE_SIZE: float = FIXTURE_HOLE_SIZE + FIXTURE_WALL_THICKNESS
 
 
 config = _Config()
