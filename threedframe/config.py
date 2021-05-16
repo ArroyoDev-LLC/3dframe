@@ -1,5 +1,6 @@
 """3DFrame configuration."""
 
+import shutil
 import contextlib
 from typing import Any, Optional
 from pathlib import Path
@@ -35,9 +36,10 @@ class _Config(BaseSettings):
     # OpenSCAD Poly Segments
     SEGMENTS: int = 48
     # OpenSCAD Libraries.
+    TMP_DIR: Path = Path("/tmp/") / "threedframe"
     LIB_DIR: Path = ROOT / "lib"
     MCAD_DIR: Path = LIB_DIR / "MCAD"
-    DOTSCAD_DIR: Path = LIB_DIR / "dotSCAD"
+    DOTSCAD_DIR: Path = LIB_DIR / "dotSCAD" / "src"
 
     _mcad: Optional[Any] = PrivateAttr(None)
     _dotSCAD: Optional[Any] = PrivateAttr(None)
@@ -48,10 +50,32 @@ class _Config(BaseSettings):
             raise ValueError(f"Missing library: {v}")
         return v
 
+    @validator("TMP_DIR", pre=True)
+    def validate_tmp_dir(cls, v: Path) -> Path:
+        if v.exists():
+            shutil.rmtree(v, ignore_errors=True)
+        v.mkdir()
+        return v
+
+    def create_lib_dir(self, lib_dir: Path):
+        """Create library directory.
+
+        Copies given lib to /tmp/ directory to
+        simplify previewing generated models on host.
+
+        """
+        rel_dir = lib_dir.relative_to(self.LIB_DIR)
+        target_dir = self.TMP_DIR / rel_dir
+        target_dir.mkdir(parents=True)
+        shutil.copytree(lib_dir, target_dir, dirs_exist_ok=True)
+        return target_dir
+
     def setup_libs(self):
+        mcad = self.create_lib_dir(self.MCAD_DIR)
+        dotscad = self.create_lib_dir(self.DOTSCAD_DIR)
         with quiet_solid():
-            self._mcad = solid.import_scad(str(self.MCAD_DIR))
-            self._dotSCAD = solid.import_scad(str(self.DOTSCAD_DIR))
+            self._mcad = solid.import_scad(str(mcad))
+            self._dotSCAD = solid.import_scad(str(dotscad))
 
     @property
     def mcad(self):
