@@ -80,7 +80,7 @@ def compute(model_path: Path):
     model_path = Path(model_path)
     script_path = Path(__file__).parent / "compute.py"
     assert script_path.exists(), "Failed to find script path."
-    data_path = model_path.with_suffix(".pkl")
+    data_path = model_path.with_suffix(".json")
     threedframe.utils.exec_blender_script(Path(model_path), script_path, data_path)
     print("[bold green]✔ Done!")
     print(f"[bold white]Data written to: [cyan]{data_path.absolute()}")
