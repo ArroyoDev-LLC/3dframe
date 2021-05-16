@@ -12,7 +12,7 @@ import bpy
 import bmesh
 from mathutils import Vector, Quaternion
 
-from threedframe.utils import ModelData, ModelEdge, ModelVertex
+from threedframe.models import ModelData, ModelEdge, ModelVertex
 
 UP = Vector((0, 0, 1))
 
@@ -88,7 +88,7 @@ for vert in bm.verts:
         )
     vert_normal = vert.normal
     vertex_info = ModelVertex(
-        vert.index,
+        vidx=vert.index,
         edges=joint_edges,
         point=(
             vert.co.x,
@@ -111,5 +111,5 @@ data_out = Path(os.getenv("THREEDFRAME_OUT"))
 
 print(f"Computed: {model_info.num_edges} edges | {model_info.num_vertices} vertices")
 
-pickled = pickle.dumps(model_info)
-data_out.write_bytes(pickled)
+model_info_ser = model_info.json()
+data_out.write_text(model_info_ser)
