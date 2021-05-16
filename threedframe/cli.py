@@ -10,6 +10,7 @@ from rich import print
 
 import threedframe.joint
 import threedframe.utils
+from threedframe.config import config
 
 
 @click.group()
@@ -83,6 +84,12 @@ def compute(model_path: Path):
     threedframe.utils.exec_blender_script(Path(model_path), script_path, data_path)
     print("[bold green]✔ Done!")
     print(f"[bold white]Data written to: [cyan]{data_path.absolute()}")
+
+
+@main.command()
+def setup_host_libs():
+    """Setup SCAD libraries on host for previewing renders in openSCAD."""
+    config.create_lib_dirs()
 
 
 if __name__ == "__main__":
