@@ -95,6 +95,7 @@ exclude = '''
     | build
     | dist
     | threedframe/lib
+    | tests/snapshots
   )/
   | foo.py           # also separately exclude a file named foo.py in
                      # the root of the project
@@ -107,7 +108,7 @@ src_paths = ["threedframe"]
 line_length = 100
 honor_noqa = true
 length_sort = true
-skip_glob = ["threedframe/lib/**/*"]
+skip_glob = ["threedframe/lib/**/*", "tests/snapshots/**/*.py"]
 
 [tool.pytest.ini_options]
 collect_ignore = ['setup.py']

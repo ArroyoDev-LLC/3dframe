@@ -238,3 +238,5 @@ dmypy.json
 !threedframe/lib
 renders
 renders_old
+snapback
+.bash_history
