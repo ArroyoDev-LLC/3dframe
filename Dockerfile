@@ -84,6 +84,16 @@ RUN curl -L ${BLENDER_URL} | tar -xJ -C /usr/local/ && \
 
 FROM app-blender AS app
 
+# Container user.
+# Create User
+RUN useradd \
+  --non-unique \
+  --no-create-home \
+  --no-user-group \
+  --home-dir /app \
+  --uid ${UID:-1000} \
+  threedframe
+
 # Install dependencies from wheels
 COPY --from=build /wheels /wheels
 RUN pip install --no-cache-dir -U pip \
@@ -94,5 +104,9 @@ WORKDIR /app/
 COPY . /app/
 
 RUN pip install --no-cache-dir -e /app/
+
+RUN chown -R threedframe: /app
+
+USER threedframe
 ENTRYPOINT /bin/bash
 CMD ['3dframe']
