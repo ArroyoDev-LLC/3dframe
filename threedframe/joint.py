@@ -1,32 +1,36 @@
 """3DFrame joint module."""
-
+import json
 import pickle
 import shutil
 import tempfile
 from os import PathLike
 from copy import deepcopy
-from typing import Iterator
+from typing import TYPE_CHECKING, Iterator
 
 from rich import print, progress
 from solid import *
 from sympy import Point
+from pydantic import parse_file_as
 from solid.utils import *
 
 from threedframe import mesh as meshutil
 from threedframe import utils
-from threedframe.utils import ModelData, label_size
 from threedframe.config import config
+from threedframe.models import ModelData, JointFixture
 from threedframe.constant import Constants
+
+if TYPE_CHECKING:
+    from threedframe.models import MeshFace
 
 ROOT = Path(__file__).parent
 
 MODEL_DATA_PATH = None
-MODEL_DATA: Optional[ModelData] = None
+MODEL_DATA: Optional["ModelData"] = None
 
 
 def locate_vertex_label_pos(
-    target_fixture: utils.JointFixture, other_fixtures: List[utils.JointFixture]
-) -> Tuple[Point3, Vector3, utils.MeshFace]:
+    target_fixture: "JointFixture", other_fixtures: List["JointFixture"]
+) -> Tuple[Point3, Vector3, "MeshFace"]:
     """Locate appropriate position for fixture label.
 
     First, we simply check for faces larger than then first face (closest to origin).
@@ -133,7 +137,7 @@ def assemble_vertex(vidx: int, debug=False, extrusion_height=None, solid=False):
 
         if debug:
             fix.modifier = "#"
-        yield utils.JointFixture(
+        joint = JointFixture(
             scad_object=fix,
             inspect_object=inspect_fix,
             inner_object=inner_fix,
@@ -151,14 +155,14 @@ def assemble_vertex(vidx: int, debug=False, extrusion_height=None, solid=False):
             ),
             inspect_data=inspect_data,
         )
+        joint.analyze()
+        yield joint
 
 
-def label_fixtures(
-    inspect_fixtures: List[utils.JointFixture], **kwargs
-) -> Iterator[utils.JointFixture]:
+def label_fixtures(inspect_fixtures: List["JointFixture"], **kwargs) -> Iterator["JointFixture"]:
     debug = kwargs.pop("debug", False)
     for fidx, fixture in enumerate(inspect_fixtures):
-        label = label_size(
+        label = utils.label_size(
             f"{fixture.model_vertex.label}\n{round(fixture.model_edge.length_in, 2)}",
             halign="center",
             valign="center",
@@ -272,7 +276,7 @@ def assembly(vertex: int, *args, **kwargs):
         for vert in [*face_verts, face_midpoint]:
             core += translate(vert)(color("red")(cube(1, center=True)))
 
-    text_el, _ = label_size(
+    text_el, _ = utils.label_size(
         f"{MODEL_DATA.vertices[vertex].label}",
         halign="center",
         valign="center",
@@ -322,10 +326,10 @@ def create_model(vidx: int, *args, **kwargs):
     scad_render_to_file(a, file_header=f"$fn = {config.SEGMENTS};", include_orig_code=True)
 
 
-def load_model(model_path: Path) -> utils.ModelData:
+def load_model(model_path: Path):
     global MODEL_DATA, MODEL_DATA_PATH
     MODEL_DATA_PATH = model_path
-    data: utils.ModelData = pickle.loads(MODEL_DATA_PATH.read_bytes())
+    data = parse_file_as(ModelData, model_path)
     MODEL_DATA = data
     return data
 
