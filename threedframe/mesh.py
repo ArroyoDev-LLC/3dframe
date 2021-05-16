@@ -7,13 +7,28 @@ TODO: This module used to be hackily copied and executed in a pymesh container,
 needs a lot of cleanup.
 
 """
+try:
+    import pymesh  # noqa
+except ImportError:
+    pymesh = None
 
-import pymesh  # noqa
 from pathlib import Path
+from functools import wraps
 
 MODELS = Path("/models")
 
 
+def check_pymesh(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if not pymesh:
+            raise RuntimeError("PyMesh library is not installed!")
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
+@check_pymesh
 def load_mesh(path: Path) -> "threedframe.lib.PyMesh.python.Mesh.Mesh":
     mesh = pymesh.load_mesh(str(path))
     mesh, _ = pymesh.remove_duplicated_faces(mesh)
@@ -26,6 +41,7 @@ def load_mesh(path: Path) -> "threedframe.lib.PyMesh.python.Mesh.Mesh":
     return mesh
 
 
+@check_pymesh
 def inspect_core(core_path: Path, joint_path: Path, out_path=None):
     core_mesh = load_mesh(core_path)
     joint_mesh = load_mesh(joint_path)
@@ -66,6 +82,7 @@ def inspect_core(core_path: Path, joint_path: Path, out_path=None):
     )
 
 
+@check_pymesh
 def collect_verts(mesh_path: Path, out_path=None):
     mesh = load_mesh(mesh_path)
     face_norms = mesh.get_face_attribute("face_normal").tolist()
@@ -114,6 +131,7 @@ def iter_mesh_vertices(mesh):
         yield dict(vidx=vidx, point=vert, normal=vert_normal)
 
 
+@check_pymesh
 def analyze_mesh(mesh_path: Path, out_path=None):
     mesh = load_mesh(mesh_path)
 
