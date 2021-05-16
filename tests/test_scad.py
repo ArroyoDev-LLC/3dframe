@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import pytest
-from snapshottest.file import FileSnapshot
 
 from threedframe import joint
 
@@ -14,4 +13,5 @@ def test_scad_render(test_data: Path, snapshot, vertices):
     render_dir = joint.ROOT.parent / "renders"
     out_path = render_dir / "joint-v1.scad"
     assert out_path.exists()
-    snapshot.assert_match(FileSnapshot(str(out_path)))
+    out_data = out_path.read_text()
+    snapshot.assert_match(out_data, f"joint-{'-'.join((str(i) for i in vertices))}")
