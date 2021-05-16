@@ -14,9 +14,9 @@ from solid.utils import *
 
 from threedframe import mesh as meshutil
 from threedframe import utils
-from threedframe.unit import UnitMM
 from threedframe.utils import ModelData, label_size
 from threedframe.config import config
+from threedframe.constant import Constants
 
 ROOT = Path(__file__).parent
 
@@ -73,15 +73,15 @@ def assemble_vertex(vidx: int, debug=False, extrusion_height=None, solid=False):
 
     for edge in v_data.edges:
         print("")
-        point = Point3(*[UnitMM(p).inches.value for p in edge.vector_ingress])
+        point = Point3(*[(p * Constants.INCH) for p in edge.vector_ingress])
         if debug:
             to_origin: LineSegment3 = point.connect(Point3(0, 0, 0))
             yield draw_segment(to_origin), None
 
-        extrusion_height = extrusion_height or UnitMM(1.5).inches
+        extrusion_height = extrusion_height or (1.5 * Constants.INCH)
 
         print("Fixture mag:", point.magnitude())
-        print("Fixture mag - CORE:", point.magnitude() - config.CORE_SIZE.value)
+        print("Fixture mag - CORE:", point.magnitude() - config.CORE_SIZE)
         to_origin_line: LineSegment3 = point.connect(Point3(*ORIGIN))
         norm_direction = (point - ORIGIN).normalized()
         print("Normalized dir:", norm_direction)
@@ -313,13 +313,13 @@ def assembly(vertex: int, *args, **kwargs):
     a += core
 
     if kwargs.get("debug", False):
-        a += grid_plane(plane="xyz", grid_unit=UnitMM(1).inches)
+        a += grid_plane(plane="xyz", grid_unit=Constants.INCH * 1)
     return a
 
 
 def create_model(vidx: int, *args, **kwargs):
     a = assembly(vidx, *args, **kwargs)
-    scad_render_to_file(a, file_header=f"$fn = {SEGMENTS};", include_orig_code=True)
+    scad_render_to_file(a, file_header=f"$fn = {config.SEGMENTS};", include_orig_code=True)
 
 
 def load_model(model_path: Path) -> utils.ModelData:
@@ -357,7 +357,7 @@ def generate(
             a = assembly(vertex, debug=debug, progress=prog)
             _, file_name = tempfile.mkstemp(suffix=".scad")
             file_path = Path(tempfile.gettempdir()) / file_name
-            out_render = scad_render(a, file_header=f"$fn = {SEGMENTS};")
+            out_render = scad_render(a, file_header=f"$fn = {config.SEGMENTS};")
             file_path.write_text(out_render)
             render_name = f"joint-v{vertex}.{file_type}"
             render_path = output_dir / render_name
