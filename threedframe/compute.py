@@ -2,7 +2,6 @@
 
 """Gathers all vectors + angels from blender model."""
 import os
-import pickle
 from math import pi, atan2
 from pprint import pprint
 from typing import Dict

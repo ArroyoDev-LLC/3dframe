@@ -6,7 +6,7 @@ from typing import List, Tuple, Optional
 import sympy as S
 from solid import OpenSCADObject, union
 from euclid3 import Point3, Vector3
-from pydantic import Field, BaseModel
+from pydantic import BaseModel
 from pydantic.fields import PrivateAttr
 
 from threedframe import mesh as meshutil
