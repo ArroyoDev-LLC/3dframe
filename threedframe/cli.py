@@ -89,7 +89,7 @@ def compute(model_path: Path):
 @main.command()
 def setup_host_libs():
     """Setup SCAD libraries on host for previewing renders in openSCAD."""
-    config.create_lib_dirs()
+    config.setup_libs()
 
 
 if __name__ == "__main__":
