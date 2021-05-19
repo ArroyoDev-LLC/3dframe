@@ -114,3 +114,16 @@ class FixtureMeta(ScadMeta):
         obj = self.do_transform(obj)
         self.scad_object = obj
 
+
+@attr.s(auto_attribs=True)
+class CoreMeta(ScadMeta):
+    fixtures: List["Fixture"] = ...
+
+    @abc.abstractmethod
+    def create_hull_cubes(self):
+        raise NotImplementedError
+
+    def assemble(self):
+        fixture_vertex_cubes = list(self.create_hull_cubes())
+        obj = sp.hull()(*fixture_vertex_cubes)
+        self.scad_object = obj
