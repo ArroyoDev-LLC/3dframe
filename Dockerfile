@@ -67,6 +67,8 @@ RUN apt-get update && \
 		libxi6 \
 		libxrender1 \
 		openscad \
+		# LaTeX
+		texlive-full \
 		xz-utils && \
 	apt-get -y autoremove && \
 	rm -rf /var/lib/apt/lists/*
