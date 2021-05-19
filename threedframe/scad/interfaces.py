@@ -19,7 +19,7 @@ class ScadMeta(abc.ABC):
 
 @attr.s(auto_attribs=True)
 class FixtureMeta(ScadMeta):
-    params: FixtureParams = ...
+    params: "FixtureParams" = ...
 
     @abc.abstractmethod
     def create_base(self) -> sp.OpenSCADObject:
