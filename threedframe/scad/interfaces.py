@@ -91,3 +91,26 @@ class ScadMeta(abc.ABC):
     def assemble(self):
         raise NotImplementedError
 
+
+@attr.s(auto_attribs=True)
+class FixtureMeta(ScadMeta):
+    params: FixtureParams = ...
+
+    @abc.abstractmethod
+    def create_base(self) -> sp.OpenSCADObject:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def do_extrude(self, obj: sp.OpenSCADObject) -> sp.OpenSCADObject:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def do_transform(self, obj: sp.OpenSCADObject) -> sp.OpenSCADObject:
+        raise NotImplementedError
+
+    def assemble(self):
+        obj = self.create_base()
+        obj = self.do_extrude(obj)
+        obj = self.do_transform(obj)
+        self.scad_object = obj
+
