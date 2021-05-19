@@ -82,3 +82,12 @@ class FixtureParams:
         dist = PlanarConstants.ORIGIN.as_sympy.distance(self.midpoint_as_sympy)
         return float(dist)
 
+
+@attr.s(auto_attribs=True)
+class ScadMeta(abc.ABC):
+    scad_object: Optional[sp.OpenSCADObject] = None
+
+    @abc.abstractmethod
+    def assemble(self):
+        raise NotImplementedError
+
