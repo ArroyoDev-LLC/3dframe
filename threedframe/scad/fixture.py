@@ -22,3 +22,9 @@ class Fixture(FixtureMeta):
         )
         return obj
 
+
+@attr.s(auto_attribs=True)
+class SolidFixture(Fixture):
+    def do_extrude(self, obj: sp.OpenSCADObject):
+        obj = sp.linear_extrude(self.params.extrusion_height)(obj)
+        return obj
