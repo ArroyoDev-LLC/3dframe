@@ -1,11 +1,15 @@
 import abc
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Dict, List, Type, Tuple, Iterator, Optional
 
 import attr
 import solid as sp
 
+from threedframe import utils
+
 if TYPE_CHECKING:
-    from .fixture import Fixture, FixtureParams
+    from .label import LabelParams
+    from ..models import MeshData, ModelVertex
+    from .fixture import FixtureParams
 
 
 @attr.s(auto_attribs=True)
@@ -18,7 +22,7 @@ class ScadMeta(abc.ABC):
 
 
 @attr.s(auto_attribs=True)
-class FixtureMeta(ScadMeta):
+class FixtureMeta(ScadMeta, abc.ABC):
     params: "FixtureParams" = ...
 
     @abc.abstractmethod
@@ -41,8 +45,9 @@ class FixtureMeta(ScadMeta):
 
 
 @attr.s(auto_attribs=True)
-class CoreMeta(ScadMeta):
-    fixtures: List["Fixture"] = ...
+class CoreMeta(ScadMeta, abc.ABC):
+    fixtures: List["FixtureMeta"] = ...
+    meshes: Dict[str, "MeshData"] = ...
 
     @abc.abstractmethod
     def create_hull_cubes(self):
@@ -52,3 +57,4 @@ class CoreMeta(ScadMeta):
         fixture_vertex_cubes = list(self.create_hull_cubes())
         obj = sp.hull()(*fixture_vertex_cubes)
         self.scad_object = obj
+
