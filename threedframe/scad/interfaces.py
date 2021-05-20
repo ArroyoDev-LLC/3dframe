@@ -58,3 +58,22 @@ class CoreMeta(ScadMeta, abc.ABC):
         obj = sp.hull()(*fixture_vertex_cubes)
         self.scad_object = obj
 
+
+@attr.s(auto_attribs=True)
+class LabelMeta(ScadMeta, abc.ABC):
+    params: "LabelParams" = ...
+
+    def create_base(self) -> sp.OpenSCADObject:
+        _params = self.params.dict()
+        label = _params.pop("content")
+        return utils.label_size(label, **_params)[0]
+
+    @abc.abstractmethod
+    def do_transform(self, obj: sp.OpenSCADObject) -> sp.OpenSCADObject:
+        raise NotImplementedError
+
+    def assemble(self):
+        obj = self.create_base()
+        obj = self.do_transform(obj)
+        self.scad_object = obj
+
