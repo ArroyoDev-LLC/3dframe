@@ -63,6 +63,7 @@ sh = "^1.14.1"
 pdbpp = "^0.10.2"
 ipython = "^7.22.0"
 jedi = "<0.18.0"
+devtools = {version = "^0.6.1", extras = ["pygments"]}
 
 
 [tool.poetry.extras]
