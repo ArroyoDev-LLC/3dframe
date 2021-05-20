@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Tuple
+from typing import Tuple
 
 import attr
 import solid as sp
@@ -6,18 +6,17 @@ import sympy as S
 from solid import utils as sputils
 from euclid3 import Point3 as EucPoint3
 from euclid3 import Vector3 as EucVector3
+from pydantic.main import BaseModel
 
 from threedframe.config import config
+from threedframe.models import ModelEdge, ModelVertex
 from threedframe.constant import Constants, PlanarConstants
 from threedframe.scad.interfaces import FixtureMeta
 
-if TYPE_CHECKING:
-    from threedframe.models import ModelEdge
 
-
-@attr.s(auto_attribs=True)
-class FixtureParams:
+class FixtureParams(BaseModel):
     source_edge: "ModelEdge"
+    source_vertex: "ModelVertex"
 
     @property
     def source_coords(self) -> Tuple[float, ...]:
@@ -81,6 +80,26 @@ class FixtureParams:
         """
         dist = PlanarConstants.ORIGIN.as_sympy.distance(self.midpoint_as_sympy)
         return float(dist)
+
+    @property
+    def adjusted_edge_length(self) -> float:
+        """Final length of physical edge that accommodates core+fixture material."""
+        return self.source_edge.length - self.edge_length_from_fixture
+
+    @property
+    def adjusted_edge_length_as_label(self) -> float:
+        """Adjusted edge length properly formatted for label."""
+        length_in = self.adjusted_edge_length / Constants.INCH
+        return round(length_in, 2)
+
+    @property
+    def label(self) -> str:
+        return "\n".join(
+            (
+                self.source_vertex.label,
+                str(self.adjusted_edge_length_as_label),
+            )
+        )
 
 
 @attr.s(auto_attribs=True)
