@@ -3,8 +3,9 @@
 """3DFrame Model Generator Utils."""
 import sys
 import time
+import random
 import subprocess as sp
-from typing import List, Tuple, Union, Callable, Sequence
+from typing import List, Tuple, Union, Callable, Iterator, Sequence
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -264,3 +265,19 @@ def find_center_of_gravity(*points: Sequence[S.Point3D]) -> S.Point3D:
 def rand_rgb_color() -> List[int]:
     """Generate random RGB color."""
     return list(np.random.random(size=3) * 256)
+
+
+def rand_color_generator() -> Iterator[str]:
+    """Infinite color generator."""
+    colors = ["red", "blue", "green", "purple", "pink", "black"]
+    random.shuffle(colors)
+    _colors = iter(colors)
+    while True:
+        try:
+            next_color = next(_colors)
+        except StopIteration:
+            random.shuffle(colors)
+            _colors = iter(colors)
+            yield next(_colors)
+        else:
+            yield next_color
