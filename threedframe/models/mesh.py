@@ -113,6 +113,8 @@ class MeshFace(BaseModel):
 class MeshData(BaseModel):
     """Mesh Analysis Data."""
 
+    _absolute_midpoint: Optional[S.Point3D] = PrivateAttr(None)
+
     # Vertices of mesh.
     vertices: List[MeshPoint]
     # Faces of mesh.
@@ -138,6 +140,12 @@ class MeshData(BaseModel):
         for face in self.faces:
             face_mps.append(find_center_of_gravity(*face.sympy_vertices, face.missing_rect_vertex))
         return find_center_of_gravity(*face_mps)
+
+    @property
+    def absolute_midpoint(self):
+        if not self._absolute_midpoint:
+            self._absolute_midpoint = self.calc_absolute_midpoint()
+        return self._absolute_midpoint
 
 
 def analyze_scad(obj: OpenSCADObject) -> "MeshData":
