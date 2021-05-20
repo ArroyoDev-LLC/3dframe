@@ -33,7 +33,10 @@ def quiet_solid():
 
 
 class _Config(BaseSettings):
-    # OpenSCAD Poly Segments
+    # General Config.
+    RENDERS_DIR: Path = Path("renders")
+
+    # OpenSCAD Poly Segments.
     SEGMENTS: int = 48
     # OpenSCAD Libraries.
     TMP_DIR: Path = Path("/tmp/") / "threedframe"
