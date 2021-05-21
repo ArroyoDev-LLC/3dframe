@@ -4,6 +4,7 @@ from pathlib import Path
 import attr
 from loguru import logger
 from pydantic import BaseModel, validator, parse_file_as
+from codetiming import Timer
 
 from threedframe import utils
 from threedframe.models import ModelData
@@ -58,6 +59,7 @@ class JointDirector:
             joint.assemble()
             yield joint
 
+    @Timer(logger=logger.success)
     def assemble(self):
         logger.info("Constructing joint objects for {} vertices.", len(self.params.model.vertices))
         logger.debug("Director builders: {}", self.builder_params)
