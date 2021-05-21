@@ -22,9 +22,7 @@ class Core(CoreMeta):
         missing_pt = utils.find_missing_rect_vertex(*points)
         points.append(missing_pt)
         # Find midpoint of inner (core facing) face.
-        point_a = points[0]
-        point_b = max(points, key=lambda p: point_a.canberra_distance(p))
-        face_midpoint = point_a.midpoint(point_b)
+        face_midpoint = S.centroid(*points)
         return face_midpoint, points
 
     def create_vertex_cube(
