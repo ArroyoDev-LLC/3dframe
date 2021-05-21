@@ -1,3 +1,4 @@
+import math
 from copy import deepcopy
 from typing import TYPE_CHECKING, Dict, List
 
@@ -38,6 +39,10 @@ class FixtureLabel(LabelMeta):
         return self.meshes[self.target.params.label]
 
     @property
+    def smallest_face(self) -> "MeshFace":
+        return min(self.target_mesh.faces, key=lambda f: f.area)
+
+    @property
     def other_meshes(self) -> Dict[str, "MeshData"]:
         _meshes = deepcopy(self.meshes)
         _meshes.pop(self.target.params.label)
@@ -48,7 +53,10 @@ class FixtureLabel(LabelMeta):
         other_centers = [m.absolute_midpoint for m in self.other_meshes.values()]
         current_optimal_face = nearest_origin_face
         for face in self.target_mesh.faces:
-            if face.area > current_optimal_face.area:
+            gt_optimal = face.area > current_optimal_face.area
+            # this filter prevents labels from ending up on the ends.
+            gt_min_area = face.area > math.ceil(self.smallest_face.area)
+            if gt_optimal and gt_min_area:
                 # ensure the taxicab distance ( Σ{x-dist, y-dist} ) is at least a fixture away.
                 other_boundaries = [
                     face.centroid_point.taxicab_distance(f) > config.FIXTURE_SIZE
@@ -57,6 +65,7 @@ class FixtureLabel(LabelMeta):
                 logger.info("Fixture label face boundary checks: {}", other_boundaries)
                 if all(other_boundaries):
                     current_optimal_face = face
+                    break
         return current_optimal_face
 
     def do_transform(self, obj: sp.OpenSCADObject) -> sp.OpenSCADObject:
