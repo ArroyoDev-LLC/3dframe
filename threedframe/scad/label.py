@@ -1,12 +1,14 @@
 import math
 from copy import deepcopy
-from typing import TYPE_CHECKING, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List
 
 import attr
 import solid as sp
+import sympy as S
 import solid.utils as sutils
 from loguru import logger
 from euclid3 import Point3 as EucPoint3
+from euclid3 import Vector3 as EucVector3
 from pydantic import BaseModel
 
 from threedframe import utils
@@ -75,12 +77,32 @@ class FixtureLabel(LabelMeta):
         face_midpoint = utils.find_center_of_gravity(
             *label_face.sympy_vertices, label_face.missing_rect_vertex
         )
-        logger.info("Label face area: {}", label_face.area)
+        logger.info("Fixture label face area: {}", label_face.area)
         face_midpoint = EucPoint3(*tuple(face_midpoint))
         obj = sutils.transform_to_point(
             obj,
             dest_point=face_midpoint,
             dest_normal=label_face.normal_vector.reflect(label_face.normal_vector),
             src_normal=self.target.params.vector_from_origin,
+        )
+        return obj
+
+
+@attr.s(auto_attribs=True, kw_only=True)
+class CoreLabel(LabelMeta):
+    core_data: Dict[str, Any]
+
+    def get_optimal_face_midpoint(self) -> S.Point:
+        face_verts = self.core_data["face_verts"]
+        face_verts = [S.Point(*v) for v in face_verts]
+        face_midpoint = utils.find_center_of_gravity(*face_verts)
+        return face_midpoint
+
+    def do_transform(self, obj: sp.OpenSCADObject) -> sp.OpenSCADObject:
+        face_midpoint = self.get_optimal_face_midpoint()
+        face_midpoint = EucPoint3(*tuple(face_midpoint))
+        face_norm = EucVector3(*self.core_data["face_norm"])
+        obj = sutils.transform_to_point(
+            obj, dest_point=face_midpoint, dest_normal=face_norm.reflect(face_norm)
         )
         return obj
