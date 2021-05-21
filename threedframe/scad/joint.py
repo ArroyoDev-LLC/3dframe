@@ -99,3 +99,8 @@ class Joint(JointMeta):
         scad_objects = [self.core.scad_object] + [f.scad_object for f in self.fixtures]
         self.scad_object = sp.union()(*scad_objects)
 
+
+class JointCoreOnlyDebug(Joint):
+    def assemble(self):
+        super().assemble()
+        self.scad_object = self.core.scad_object
