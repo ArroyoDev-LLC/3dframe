@@ -40,7 +40,7 @@ class Joint(JointMeta):
 
     def build_labeled_fixtures(self) -> Iterator["FixtureMeta"]:
         for fixture in self.fixtures:
-            label_params = LabelParams(content=fixture.params.adjusted_edge_length_as_label)
+            label_params = LabelParams(content=fixture.params.label)
             label_obj = self.fixture_label_builder(
                 params=label_params, fixtures=self.fixtures, target=fixture, meshes=self.meshes
             )
