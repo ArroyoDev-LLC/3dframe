@@ -1,8 +1,8 @@
 """3dframe model models."""
 import string
-from typing import Dict, List, Tuple, Iterator
+from typing import Dict, List, Tuple, Iterator, Optional
 
-from pydantic import Field, BaseModel
+from pydantic import Field, BaseModel, validator
 
 
 class ModelEdge(BaseModel):
@@ -37,7 +37,13 @@ class ModelVertex(BaseModel):
     # Vertex Point normal.
     point_normal: Tuple[float, float, float]
     # Generated label for vertex.
-    label: str = Field(default_factory=lambda: next(MODEL_LABELS))
+    label: Optional[str] = Field(default_factory=lambda: next(MODEL_LABELS))
+
+    @validator("label")
+    def validate_label(cls, v: str):
+        if not v or not isinstance(v, str):
+            return next(MODEL_LABELS)
+        return v
 
 
 def label_generator() -> Iterator[str]:
