@@ -2,6 +2,7 @@
 
 import itertools
 from typing import List, Tuple, Optional
+from functools import cached_property
 
 import sympy as S
 from solid import OpenSCADObject, union
@@ -29,23 +30,26 @@ class MeshPoint(BaseModel):
     # Parent Mesh Data.
     _parent: Optional["MeshData"] = PrivateAttr(default=None)
 
+    class Config:
+        keep_untouched = (cached_property,)
+
     @property
     def faces(self) -> List["MeshFace"]:
         return [f for f in self._parent.faces if self.vidx in f.vertex_indices]
 
-    @property
+    @cached_property
     def as_euclid(self) -> Point3:
         return Point3(*self.point)
 
-    @property
+    @cached_property
     def as_sympy(self) -> S.Point3D:
         return S.Point3D(*self.point)
 
-    @property
+    @cached_property
     def as_vector(self) -> Vector3:
         return Vector3(*self.point)
 
-    @property
+    @cached_property
     def normal_vector(self) -> Vector3:
         return Vector3(*self.normal)
 
@@ -66,23 +70,26 @@ class MeshFace(BaseModel):
     # Parent Mesh Data.
     _parent: Optional["MeshData"] = PrivateAttr(default=None)
 
+    class Config:
+        keep_untouched = (cached_property,)
+
     @property
     def vertices(self) -> List[MeshPoint]:
         return [v for v in self._parent.vertices if v.vidx in self.vertex_indices]
 
-    @property
+    @cached_property
     def sympy_vertices(self) -> List[S.Point3D]:
         return [p.as_sympy for p in self.vertices]
 
-    @property
+    @cached_property
     def euclid_vertices(self) -> List[Point3]:
         return [p.as_euclid for p in self.vertices]
 
-    @property
+    @cached_property
     def as_sympy_plane(self) -> S.Plane:
         return S.Plane(*self.sympy_vertices, normal_vector=self.normal)
 
-    @property
+    @cached_property
     def missing_rect_vertex(self) -> S.Point3D:
         points_perms = itertools.permutations(self.sympy_vertices, 3)
         least_dist = None
@@ -95,17 +102,17 @@ class MeshFace(BaseModel):
                 least_dist_point = midp
         return least_dist_point
 
-    @property
+    @cached_property
     def midpoint_by_canberra(self) -> S.Point3D:
         fp_1 = self.vertices[0].as_sympy
         fp_2 = max(self.sympy_vertices, key=lambda p: fp_1.canberra_distance(p))
         return fp_1.midpoint(fp_2)
 
-    @property
+    @cached_property
     def normal_vector(self) -> Vector3:
         return Vector3(*self.normal)
 
-    @property
+    @cached_property
     def centroid_point(self) -> S.Point3D:
         return S.Point3D(*self.centroid)
 
@@ -113,12 +120,13 @@ class MeshFace(BaseModel):
 class MeshData(BaseModel):
     """Mesh Analysis Data."""
 
-    _absolute_midpoint: Optional[S.Point3D] = PrivateAttr(None)
-
     # Vertices of mesh.
     vertices: List[MeshPoint]
     # Faces of mesh.
     faces: List[MeshFace]
+
+    class Config:
+        keep_untouched = (cached_property,)
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -141,11 +149,9 @@ class MeshData(BaseModel):
             face_mps.append(find_center_of_gravity(*face.sympy_vertices, face.missing_rect_vertex))
         return find_center_of_gravity(*face_mps)
 
-    @property
+    @cached_property
     def absolute_midpoint(self):
-        if not self._absolute_midpoint:
-            self._absolute_midpoint = self.calc_absolute_midpoint()
-        return self._absolute_midpoint
+        return self.calc_absolute_midpoint()
 
 
 def analyze_scad(obj: OpenSCADObject) -> "MeshData":
