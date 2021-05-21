@@ -44,7 +44,7 @@ class JointDirector:
     @property
     def builder_params(self) -> Dict[str, Any]:
         _build_params = self.params.dict(
-            exclude={"model", "vertices"}, exclude_none=True, exclude_unset=True
+            exclude={"model", "vertices", "joint_builder"}, exclude_none=True, exclude_unset=True
         )
         return _build_params
 
