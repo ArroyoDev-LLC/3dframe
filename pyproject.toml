@@ -31,7 +31,6 @@ sphinx-autodoc-typehints = { version = "^1.11.1", optional = true }
 recommonmark = { version = "^0.7.1", optional = true }
 sphinx_rtd_theme = { version = "^0.5.1", optional = true }
 # main
-click = "^7.1.2"
 rich = "^9.10.0"
 solidpython = "^1.0.4"
 numpy = "^1.19.5"
@@ -41,6 +40,7 @@ sympy = "^1.7.1"
 attrs = "^20.3.0"
 pydantic = "^1.8.1"
 loguru = "^0.5.3"
+typer = {version = "^0.3.2", extras = ["all"]}
 
 [tool.poetry.dev-dependencies]
 autoflake = "^1.4"
