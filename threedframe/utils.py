@@ -4,6 +4,7 @@
 import sys
 import time
 import random
+import itertools
 import subprocess as sp
 from typing import List, Tuple, Union, Callable, Iterator, Sequence
 from pathlib import Path
@@ -236,8 +237,43 @@ class FileModifiedWatcher:
 
 
 def find_missing_rect_vertex(pa: S.Point3D, pb: S.Point3D, pc: S.Point3D) -> S.Point3D:
-    """Given 3 3d points of a rectangle, find a return the fourth missing
-    vertex."""
+    """Given 3 3d points of a rectangle, find a return the fourth missing vertex.
+
+    Equation:
+        (x,y,z)w = (x,y,z)t + (x,y,z)v − (x,y,z)u
+
+    Where:
+        Sub w: resulting missing vertex.
+        Sub t: a point in hypotenuse TV.
+        Sub v: a point in hypotenuse TV.
+        Sub u: 'corner' point (usually forming right angle).
+
+    """
+
+    # Determine which two points are the furthest from each other.
+    # The 'unused' point is our corner.
+    vert_t = None
+    vert_v = None
+    for test_a, test_b in itertools.permutations(
+        (
+            pa,
+            pb,
+            pc,
+        ),
+        2,
+    ):
+        cur_dist = None
+        if vert_t and vert_v:
+            cur_dist = vert_t.distance(vert_v)
+        dist = test_a.distance(test_b)
+        if cur_dist is None:
+            cur_dist = dist
+        if dist >= cur_dist:
+            vert_t = test_a
+            vert_v = test_b
+
+    vert_u = next(iter({pa, pb, pc} - {vert_t, vert_v}))
+
     x, y, z = S.symbols("x y z")
     expr = x + y - z
     pd_pts = []
@@ -247,7 +283,7 @@ def find_missing_rect_vertex(pa: S.Point3D, pb: S.Point3D, pc: S.Point3D) -> S.P
         "z",
     ):
         attr_pt = expr.subs(
-            [(x, getattr(pa, attr)), (y, getattr(pc, attr)), (z, getattr(pb, attr))]
+            [(x, getattr(vert_t, attr)), (y, getattr(vert_v, attr)), (z, getattr(vert_u, attr))]
         )
         pd_pts.append(attr_pt)
     return S.Point3D(*pd_pts)
