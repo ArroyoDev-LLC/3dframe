@@ -5,22 +5,6 @@ from typing import Dict, List, Tuple, Iterator
 from pydantic import Field, BaseModel
 
 
-class ModelData(BaseModel):
-    """Computed model info."""
-
-    # Total number of vertices in model.
-    num_vertices: int
-    # Total number of edges in model.
-    num_edges: int
-    # Vertices.
-    vertices: Dict[int, "ModelVertex"]
-
-    def get_edge_target_vertex(self, edge: "ModelEdge") -> "ModelVertex":
-        """Retrieve an edges target vertex."""
-        vertex = self.vertices[edge.target_vidx]
-        return vertex
-
-
 class ModelEdge(BaseModel):
     """Computed edge info."""
 
@@ -80,7 +64,20 @@ def label_generator() -> Iterator[str]:
         yield f"{_base_label}{label}"
 
 
+class ModelData(BaseModel):
+    """Computed model info."""
+
+    # Total number of vertices in model.
+    num_vertices: int
+    # Total number of edges in model.
+    num_edges: int
+    # Vertices.
+    vertices: Dict[int, ModelVertex]
+
+    def get_edge_target_vertex(self, edge: "ModelEdge") -> "ModelVertex":
+        """Retrieve an edges target vertex."""
+        vertex = self.vertices[edge.target_vidx]
+        return vertex
+
+
 MODEL_LABELS = label_generator()
-
-
-ModelData.update_forward_refs()
