@@ -1,0 +1,142 @@
+# This test code was written by the `hypothesis.extra.ghostwriter` module
+# and is provided under the Creative Commons Zero public domain dedication.
+
+from hypothesis import given
+from hypothesis import strategies as st
+from solid.solidpython import OpenSCADObject
+
+import threedframe.models
+from threedframe.models import MeshData, MeshFace, MeshPoint, ModelEdge, ModelVertex
+
+
+@given(
+    scad_object=st.builds(OpenSCADObject),
+    inspect_object=st.builds(OpenSCADObject),
+    inner_object=st.builds(OpenSCADObject),
+    model_edge=st.builds(ModelEdge),
+    model_vertex=st.builds(
+        ModelVertex, label=st.one_of(st.none(), st.one_of(st.none(), st.text()))
+    ),
+    dest_point=st.tuples(st.floats(), st.floats(), st.floats()),
+    dest_normal=st.tuples(st.floats(), st.floats(), st.floats()),
+    inspect_data=st.builds(dict),
+    inspect_mesh=st.one_of(st.none(), st.builds(MeshData)),
+)
+def test_fuzz_JointFixture(
+    scad_object,
+    inspect_object,
+    inner_object,
+    model_edge,
+    model_vertex,
+    dest_point,
+    dest_normal,
+    inspect_data,
+    inspect_mesh,
+):
+    threedframe.models.JointFixture(
+        scad_object=scad_object,
+        inspect_object=inspect_object,
+        inner_object=inner_object,
+        model_edge=model_edge,
+        model_vertex=model_vertex,
+        dest_point=dest_point,
+        dest_normal=dest_normal,
+        inspect_data=inspect_data,
+        inspect_mesh=inspect_mesh,
+    )
+
+
+@given(
+    vertices=st.lists(
+        st.builds(
+            MeshPoint,
+            normal=st.one_of(
+                st.none(),
+                st.one_of(st.none(), st.tuples(st.floats(), st.floats(), st.floats())),
+            ),
+        )
+    ),
+    faces=st.lists(
+        st.builds(
+            MeshFace,
+            centroid=st.one_of(
+                st.none(),
+                st.one_of(st.none(), st.tuples(st.floats(), st.floats(), st.floats())),
+            ),
+            normal=st.one_of(
+                st.none(),
+                st.one_of(st.none(), st.tuples(st.floats(), st.floats(), st.floats())),
+            ),
+        )
+    ),
+)
+def test_fuzz_MeshData(vertices, faces):
+    threedframe.models.MeshData(vertices=vertices, faces=faces)
+
+
+@given(
+    fidx=st.integers(),
+    vertex_indices=st.lists(st.integers()),
+    normal=st.one_of(st.none(), st.tuples(st.floats(), st.floats(), st.floats())),
+    area=st.floats(),
+    centroid=st.one_of(st.none(), st.tuples(st.floats(), st.floats(), st.floats())),
+)
+def test_fuzz_MeshFace(fidx, vertex_indices, normal, area, centroid):
+    threedframe.models.MeshFace(
+        fidx=fidx,
+        vertex_indices=vertex_indices,
+        normal=normal,
+        area=area,
+        centroid=centroid,
+    )
+
+
+@given(
+    vidx=st.integers(),
+    point=st.tuples(st.floats(), st.floats(), st.floats()),
+    normal=st.one_of(st.none(), st.tuples(st.floats(), st.floats(), st.floats())),
+)
+def test_fuzz_MeshPoint(vidx, point, normal):
+    threedframe.models.MeshPoint(vidx=vidx, point=point, normal=normal)
+
+
+@given(
+    num_vertices=st.integers(),
+    num_edges=st.integers(),
+    vertices=st.dictionaries(
+        keys=st.integers(),
+        values=st.builds(ModelVertex, label=st.one_of(st.none(), st.one_of(st.none(), st.text()))),
+    ),
+)
+def test_fuzz_ModelData(num_vertices, num_edges, vertices):
+    threedframe.models.ModelData(num_vertices=num_vertices, num_edges=num_edges, vertices=vertices)
+
+
+@given(
+    eidx=st.integers(),
+    length=st.floats(),
+    joint_vidx=st.integers(),
+    target_vidx=st.integers(),
+    vector_ingress=st.tuples(st.floats(), st.floats(), st.floats()),
+)
+def test_fuzz_ModelEdge(eidx, length, joint_vidx, target_vidx, vector_ingress):
+    threedframe.models.ModelEdge(
+        eidx=eidx,
+        length=length,
+        joint_vidx=joint_vidx,
+        target_vidx=target_vidx,
+        vector_ingress=vector_ingress,
+    )
+
+
+@given(
+    vidx=st.integers(),
+    edges=st.lists(st.builds(ModelEdge)),
+    point=st.tuples(st.floats(), st.floats(), st.floats()),
+    point_normal=st.tuples(st.floats(), st.floats(), st.floats()),
+    label=st.one_of(st.none(), st.text()),
+)
+def test_fuzz_ModelVertex(vidx, edges, point, point_normal, label):
+    threedframe.models.ModelVertex(
+        vidx=vidx, edges=edges, point=point, point_normal=point_normal, label=label
+    )
