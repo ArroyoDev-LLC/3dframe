@@ -63,6 +63,21 @@ class Core(CoreMeta):
 
 
 class CoreDebugCubes(Core):
+    def create_fixture_inner_vertex_cubes(
+        self,
+        fixture: "FixtureMeta",
+        **kwargs,
+    ) -> Iterator[sp.OpenSCADObject]:
+        solid_mesh = self.meshes[fixture.params.label]
+        face = solid_mesh.faces[0]
+        vertices = [v.as_sympy for v in face.vertices]
+        face_midpoint, all_vertices = self.find_inner_face_midpoint(vertices)
+        for vertex in all_vertices:
+            yield self.create_vertex_cube(face, face_midpoint, vertex, **kwargs)
+        yield sputils.transform_to_point(
+            sp.cube(1, center=True), dest_point=tuple(face_midpoint), dest_normal=face.normal
+        )
+
     def assemble(self):
         fixture_vertex_cubes = list(self.create_hull_cubes())
         obj = sp.union()(*fixture_vertex_cubes)
