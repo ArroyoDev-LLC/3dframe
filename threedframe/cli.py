@@ -1,81 +1,81 @@
 #!/usr/bin/env python3
 
 """Console script for 3DFrame."""
-import sys
+from enum import Enum
+from typing import List, Optional
 from pathlib import Path
-from importlib import reload
 
-import click
-from rich import print
+import typer
 
-import threedframe.joint
 import threedframe.utils
+from threedframe.scad import JointDirector, JointDirectorParams
 from threedframe.config import config
+from threedframe.scad.core import CoreDebugCubes
+from threedframe.scad.joint import SolidFixture, JointCoreOnlyDebug
 
 
-@click.group()
-def main():
-    """3dframe Cli Entrypoint."""
+class DebugModes(str, Enum):
+    CORE_ONLY = "coreOnly"
+    CORE_VERTICES = "coreVertices"
+
+    @property
+    def _builders(self):
+        return {
+            DebugModes.CORE_ONLY: {"joint_builder": JointCoreOnlyDebug},
+            DebugModes.CORE_VERTICES: {
+                "fixture_builder": SolidFixture,
+                "core_builder": CoreDebugCubes,
+            },
+        }
+
+    @property
+    def builders(self):
+        return self._builders[self]
 
 
-@main.command()
-@click.option("-d", "--debug", is_flag=True, default=False, help="Enable debug mode.")
-@click.option(
-    "-r", "--render", is_flag=True, default=False, help="Render to .STL or provided file type."
-)
-@click.option("-k", "--keep", is_flag=True, default=False, help="Keep SCAD Files.")
-@click.option("-w", "--watch", is_flag=True, default=False, help="Watch for changes.")
-@click.option(
-    "-f",
-    "--file-type",
-    default="stl",
-    help="Exported file type.",
-)
-@click.argument(
-    "model_data",
-    type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True),
-)
-@click.argument("vertices", type=str, nargs=-1)
-def generate(model_data, vertices=tuple(), watch=False, *args, **kwargs):
-    """Generate joint model from given vertex."""
-    print(vertices)
-    _verts = vertices
-    if not any(vertices) and not vertices == tuple([0]) and not vertices == tuple(["0"]):
-        print("[bold orange]No vertices were provided.")
-        click.confirm("Would you like to render ALL vertices?", abort=True)
-    else:
-        _verts = []
-        for v in vertices:
-            if "-" in v:
-                rng = [int(i) for i in v.split("-")]
-                final = rng.pop(-1)
-                rng.append(final + 1)
-                for pv in range(*rng):
-                    _verts.append(int(pv))
-            else:
-                _verts.append(int(v))
-        click.confirm(f"Render {' '.join([str(i) for i in _verts])}?", abort=True)
-    threedframe.joint.generate(Path(model_data), _verts, *args, **kwargs)
-    if watch:
-
-        def _on_modify():
-            reload(threedframe.joint)
-            reload(threedframe.utils)
-            try:
-                threedframe.joint.generate(Path(model_data), vertices, *args, **kwargs)
-            except Exception as e:
-                print(e)
-
-        watcher = threedframe.utils.FileModifiedWatcher(_on_modify)
-        watcher.run()
+app = typer.Typer(name="3dframe")
 
 
-@main.command()
-@click.argument(
-    "model_path",
-    type=click.Path(exists=True, file_okay=True, dir_okay=False),
-)
-def compute(model_path: Path):
+def parse_vertices(vertices: List[str]):
+    if not len(vertices):
+        typer.confirm("Are you sure you want to render ALL vertices?", abort=True)
+        return None
+    _verts = []
+    for v in vertices:
+        if "-" in v:
+            rng = [int(i) for i in v.split("-")]
+            final = rng.pop(-1)
+            rng.append(final + 1)
+            for pv in range(*rng):
+                _verts.append(int(pv))
+        else:
+            _verts.append(int(v))
+    return _verts
+
+
+@app.command()
+def generate(
+    model_path: Path = typer.Argument(
+        ..., exists=True, file_okay=True, dir_okay=False, help="Path to data computed from model."
+    ),
+    vertices: Optional[List[str]] = typer.Option(
+        None, "-v", "--vertices", callback=parse_vertices, help="Vertices to render."
+    ),
+    debug_mode: Optional[DebugModes] = typer.Option(None, help="Optional debug mode to utilize."),
+):
+    """Generate joint model from given vertices."""
+    params = JointDirectorParams(model=model_path, vertices=vertices)
+    if debug_mode is not None:
+        params = JointDirectorParams(model=model_path, vertices=vertices, **debug_mode.builders)
+    director = JointDirector(params=params)
+    typer.secho(
+        f"Building joints for {len(vertices)} vertices.", bold=True, fg=typer.colors.BRIGHT_WHITE
+    )
+    director.assemble()
+
+
+@app.command()
+def compute(model_path: Path = typer.Argument(..., exists=True, file_okay=True, dir_okay=False)):
     """Compute vertices/edge data from blender model."""
     model_path = Path(model_path)
     script_path = Path(__file__).parent / "compute.py"
@@ -86,11 +86,16 @@ def compute(model_path: Path):
     print(f"[bold white]Data written to: [cyan]{data_path.absolute()}")
 
 
-@main.command()
+@app.command()
 def setup_host_libs():
     """Setup SCAD libraries on host for previewing renders in openSCAD."""
     config.setup_libs()
 
 
+@app.callback()
+def main():
+    """3dframe CLI Entrypoint."""
+
+
 if __name__ == "__main__":
-    sys.exit(main())  # pragma: no cover
+    app()

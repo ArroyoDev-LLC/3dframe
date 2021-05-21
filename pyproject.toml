@@ -73,7 +73,7 @@ docs = ["sphinx", "sphinx-autodoc-typehints", "recommonmark", "sphinx_rtd_theme"
 
 
 [tool.poetry.scripts]
-3dframe = 'threedframe.cli:main'
+3dframe = 'threedframe.cli:app'
 
 
 [tool.dephell.main]
