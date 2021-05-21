@@ -15,6 +15,8 @@ except ImportError:
 from pathlib import Path
 from functools import wraps
 
+from loguru import logger
+
 MODELS = Path("/models")
 
 
@@ -50,7 +52,7 @@ def inspect_core(core_path: Path, joint_path: Path, out_path=None):
     joint_vertices = set([tuple(v) for v in joint_mesh.vertices.tolist()])
 
     common_verts = core_vertices & joint_vertices
-    print("Intersecting Vertices:", common_verts)
+    logger.debug("Intersecting Vertices: {}", common_verts)
 
     face_areas = core_mesh.get_attribute("face_area").tolist()
     face_norms = core_mesh.get_face_attribute("face_normal").tolist()
@@ -64,17 +66,17 @@ def inspect_core(core_path: Path, joint_path: Path, out_path=None):
             farea = face_areas[fidx]
             adj_face_areas.append((fidx, farea))
 
-    print("Adjacent Face Areas:", adj_face_areas)
+    logger.debug("Adjacent Face Areas: {}", adj_face_areas)
     max_face_idx, max_face_area = max(adj_face_areas, key=lambda k: k[1])
 
-    print("Maximum face area:", max_face_idx, max_face_area)
+    logger.debug("Maximum face area: {}, {}", max_face_idx, max_face_area)
 
     max_face_normal = face_norms[max_face_idx]
     max_face_vert_idxs = core_mesh.faces[max_face_idx]
     max_face_verts = [tuple(core_mesh.vertices[vx]) for vx in max_face_vert_idxs]
 
-    print("Max face verts:", max_face_verts)
-    print("Max face norm:", max_face_normal)
+    logger.debug("Max face verts: {}", max_face_verts)
+    logger.debug("Max face norm: {}", max_face_normal)
     return dict(
         face_verts=max_face_verts,
         face_norm=max_face_normal,
@@ -134,6 +136,11 @@ def iter_mesh_vertices(mesh):
 @check_pymesh
 def analyze_mesh(mesh_path: Path, out_path=None):
     mesh = load_mesh(mesh_path)
-
     mesh_data = dict(faces=list(iter_mesh_faces(mesh)), vertices=list(iter_mesh_vertices(mesh)))
+    logger.info(
+        "analyzed mesh @ {} | {} vertices - {} faces",
+        mesh_path,
+        len(mesh_data["vertices"]),
+        len(mesh_data["faces"]),
+    )
     return mesh_data
