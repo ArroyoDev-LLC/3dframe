@@ -1,5 +1,4 @@
 import math
-from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Dict, List
 
 import attr
@@ -46,8 +45,7 @@ class FixtureLabel(LabelMeta):
 
     @property
     def other_meshes(self) -> Dict[str, "MeshData"]:
-        _meshes = deepcopy(self.meshes)
-        _meshes.pop(self.target.params.label)
+        _meshes = {k: v for k, v in self.meshes.items() if k != self.target.params.label}
         return _meshes
 
     def find_clear_face(self) -> "MeshFace":
