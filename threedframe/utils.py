@@ -12,6 +12,7 @@ from tempfile import TemporaryDirectory
 
 import sh
 import numpy as np
+import solid
 import sympy as S
 from rich import print
 from solid import OpenSCADObject, text, union, resize, translate, scad_render, linear_extrude
@@ -317,3 +318,18 @@ def rand_color_generator() -> Iterator[str]:
             yield next(_colors)
         else:
             yield next_color
+
+
+def hollow_out(obj: OpenSCADObject, shell_thickness: int) -> OpenSCADObject:
+    """Hollow SCAD object.
+
+    Python implementation of dotSCAD's hollow_out module.
+    Implemented due to solidpython having issues
+    pickling imported scad modules.
+
+    Args:
+        obj: scad object to hollow.
+        shell_thickness: shell thickness.
+
+    """
+    return solid.difference()(obj, solid.offset(delta=-shell_thickness)(obj))
