@@ -1,13 +1,15 @@
-from typing import TYPE_CHECKING, Any, Dict, Type, Union, Iterator, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Dict, Type, Union, Optional, Sequence
 from pathlib import Path
+from multiprocessing import Pool
 
 import attr
+import psutil
 from loguru import logger
 from pydantic import BaseModel, validator, parse_file_as
 from codetiming import Timer
 
 from threedframe import utils
-from threedframe.models import ModelData
+from threedframe.models import ModelData, ModelVertex
 from threedframe.scad.joint import Joint
 
 from ..config import config
@@ -24,7 +26,10 @@ class JointDirectorParams(BaseModel):
     core_label_builder: Optional[Type["LabelMeta"]] = None
 
     vertices: Optional[Sequence[int]] = None
+    render: bool = False
+    render_file_type: Optional[str] = "stl"
     model: Union[Path, "ModelData"]
+    overwrite: bool = False
 
     @validator("model")
     def validate_model_data(cls, v: Union[Path, "ModelData"], values: Dict[str, Any]) -> ModelData:
@@ -45,26 +50,50 @@ class JointDirector:
     @property
     def builder_params(self) -> Dict[str, Any]:
         _build_params = self.params.dict(
-            exclude={"model", "vertices", "joint_builder"}, exclude_none=True, exclude_unset=True
+            exclude={"model", "vertices", "joint_builder", "render", "render_file_type"},
+            exclude_none=True,
+            exclude_unset=True,
         )
         return _build_params
 
-    def build_joints(self) -> Iterator["JointMeta"]:
-        for vertex in self.params.model.vertices.values():
-            logger.info("Building joint for vertex: {}", vertex.vidx)
-            joint = self.params.joint_builder(
-                vertex=vertex,
-                **self.builder_params,
-            )
-            joint.assemble()
-            yield joint
+    def build_joint(self, vertex: "ModelVertex") -> Optional["JointMeta"]:
+        scad_path = self.get_joint_file_path(vertex.vidx)
+        if not self.params.overwrite and scad_path.exists() and self.params.render:
+            logger.warning(f"Joint for vertex: {vertex.vidx} already exists, skipping to render...")
+            return self.render_joint(scad_path)
+        logger.info("Building joint for vertex: {}", vertex.vidx)
+        joint = self.params.joint_builder(
+            vertex=vertex,
+            **self.builder_params,
+        )
+        joint.assemble()
+        self.write_joint(joint)
+        return joint
+
+    def get_joint_file_path(self, vidx: int) -> Path:
+        file_name = f"joint-v{vidx}.scad"
+        out_path = config.RENDERS_DIR / file_name
+        return out_path
+
+    def write_joint(self, joint: "JointMeta"):
+        out_path = self.get_joint_file_path(joint.vertex.vidx)
+        utils.write_scad(joint.scad_object, out_path, segments=config.SEGMENTS)
+        if self.params.render:
+            self.render_joint(out_path)
+
+    def render_joint(self, scad_path: Path):
+        out_path = scad_path.with_suffix(f".{self.params.render_file_type}")
+        logger.success("Writing mesh -> {}", out_path)
+        proc = utils.openscad_cmd("-o", str(out_path), str(scad_path))
+        for line in iter(proc.stderr.readline, b""):
+            outline = line.decode().rstrip("\n")
+            logger.debug("[OpenSCAD]: {}", outline)
 
     @Timer(logger=logger.success)
     def assemble(self):
         logger.info("Constructing joint objects for {} vertices.", len(self.params.model.vertices))
         logger.debug("Director builders: {}", self.builder_params)
-        joints = list(self.build_joints())
-        for joint in joints:
-            file_name = f"joint-v{joint.vertex.vidx}.scad"
-            out_dir = config.RENDERS_DIR / file_name
-            utils.write_scad(joint.scad_object, out_dir, segments=config.SEGMENTS)
+        workers = psutil.cpu_count()
+        verts = self.params.model.vertices.values()
+        with Pool(processes=workers) as pool:
+            pool.map(self.build_joint, verts)
