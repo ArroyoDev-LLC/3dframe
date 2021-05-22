@@ -55,9 +55,7 @@ class _Config(BaseSettings):
 
     @validator("TMP_DIR", pre=True)
     def validate_tmp_dir(cls, v: Path) -> Path:
-        if v.exists():
-            shutil.rmtree(v, ignore_errors=True)
-        v.mkdir()
+        v.mkdir(exist_ok=True)
         return v
 
     def create_lib_dir(self, lib_dir: Path):
@@ -69,7 +67,9 @@ class _Config(BaseSettings):
         """
         rel_dir = lib_dir.relative_to(self.LIB_DIR)
         target_dir = self.TMP_DIR / rel_dir
-        target_dir.mkdir(parents=True)
+        if target_dir.exists():
+            return target_dir
+        target_dir.mkdir(parents=True, exist_ok=True)
         shutil.copytree(lib_dir, target_dir, dirs_exist_ok=True)
         return target_dir
 
