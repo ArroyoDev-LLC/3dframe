@@ -37,7 +37,7 @@ class MeshPoint(BaseModel):
     def faces(self) -> List["MeshFace"]:
         return [f for f in self._parent.faces if self.vidx in f.vertex_indices]
 
-    @cached_property
+    @property
     def as_euclid(self) -> Point3:
         return Point3(*self.point)
 
@@ -45,11 +45,11 @@ class MeshPoint(BaseModel):
     def as_sympy(self) -> S.Point3D:
         return S.Point3D(*self.point)
 
-    @cached_property
+    @property
     def as_vector(self) -> Vector3:
         return Vector3(*self.point)
 
-    @cached_property
+    @property
     def normal_vector(self) -> Vector3:
         return Vector3(*self.normal)
 
@@ -81,7 +81,7 @@ class MeshFace(BaseModel):
     def sympy_vertices(self) -> List[S.Point3D]:
         return [p.as_sympy for p in self.vertices]
 
-    @cached_property
+    @property
     def euclid_vertices(self) -> List[Point3]:
         return [p.as_euclid for p in self.vertices]
 
@@ -108,7 +108,7 @@ class MeshFace(BaseModel):
         fp_2 = max(self.sympy_vertices, key=lambda p: fp_1.canberra_distance(p))
         return fp_1.midpoint(fp_2)
 
-    @cached_property
+    @property
     def normal_vector(self) -> Vector3:
         return Vector3(*self.normal)
 
