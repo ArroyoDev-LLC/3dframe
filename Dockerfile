@@ -24,24 +24,46 @@ WORKDIR /wheels
 RUN bash -c "cp /app/dist/* /wheels/ && cp /app/requirements.txt /wheels/ && rm -rf /app"
 
 
-FROM python:3.8 as pymesh
+FROM python:3.8 as deps
+
+# Install blender.
+ENV BLENDER_MAJOR 2.92
+ENV BLENDER_VERSION 2.92.0
+ENV BLENDER_URL https://download.blender.org/release/Blender${BLENDER_MAJOR}/blender-${BLENDER_VERSION}-linux64.tar.xz
+RUN curl -L ${BLENDER_URL} | tar -xJ -C /usr/local/ && \
+	mv /usr/local/blender-${BLENDER_VERSION}-linux64 /usr/local/blender
+
+# Pymesh + OpenSCAD + Blender deps
+RUN apt-get update && apt-get install -y \
+        gcc \
+        g++ \
+        git \
+        cmake \
+        libgmp-dev \
+        libmpfr-dev \
+        libgmpxx4ldbl \
+        libboost-dev \
+        libboost-thread-dev \
+        zip unzip patchelf \
+        # openscad and blender
+        curl \
+        libfreetype6 \
+        libglu1-mesa \
+        libxi6 \
+        libxrender1 \
+        xz-utils \
+        openscad \
+     && apt-get clean \
+     && rm -rf /var/lib/apt/lists/*
+
+
+
+FROM deps as pymesh
 WORKDIR /root/
 ARG BRANCH="main"
 ARG NUM_CORES=2
 
-RUN apt-get update && apt-get install -y \
-    gcc \
-    g++ \
-    git \
-    cmake \
-    libgmp-dev \
-    libmpfr-dev \
-    libgmpxx4ldbl \
-    libboost-dev \
-    libboost-thread-dev \
-    zip unzip patchelf && \
-    apt-get clean && \
-    git clone --single-branch -b $BRANCH https://github.com/PyMesh/PyMesh.git
+RUN git clone --single-branch -b $BRANCH https://github.com/PyMesh/PyMesh.git
 
 ENV PYMESH_PATH /root/PyMesh
 ENV NUM_CORES $NUM_CORES
@@ -56,35 +78,7 @@ RUN git submodule update --init && \
     python -c "import pymesh; pymesh.test()"
 
 
-FROM pymesh AS app-apt
-
-# Blender deps + openscad
-RUN apt-get update && \
-	apt-get install -y --no-install-recommends \
-		curl \
-		libfreetype6 \
-		libglu1-mesa \
-		libxi6 \
-		libxrender1 \
-		openscad \
-		# LaTeX
-		texlive-full \
-		xz-utils && \
-	apt-get -y autoremove && \
-	rm -rf /var/lib/apt/lists/*
-
-
-FROM app-apt AS app-blender
-
-# Install blender.
-ENV BLENDER_MAJOR 2.92
-ENV BLENDER_VERSION 2.92.0
-ENV BLENDER_URL https://download.blender.org/release/Blender${BLENDER_MAJOR}/blender-${BLENDER_VERSION}-linux64.tar.xz
-RUN curl -L ${BLENDER_URL} | tar -xJ -C /usr/local/ && \
-	mv /usr/local/blender-${BLENDER_VERSION}-linux64 /usr/local/blender
-
-
-FROM app-blender AS app
+FROM pymesh AS app
 
 # Container user.
 # Create User
