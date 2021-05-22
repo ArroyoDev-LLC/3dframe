@@ -73,6 +73,7 @@ class JointDirector:
         )
         return _build_params
 
+    @logger.catch
     def build_joint(self, vertex: "ModelVertex") -> Optional["JointMeta"]:
         scad_path = self.get_joint_file_path(vertex.vidx)
         if not self.params.overwrite and scad_path.exists() and self.params.render:
@@ -112,7 +113,17 @@ class JointDirector:
     def assemble(self):
         logger.info("Constructing joint objects for {} vertices.", len(self.params.model.vertices))
         logger.debug("Director builders: {}", self.builder_params)
+        verts = self.params.model.vertices.values()
+        for vert in verts:
+            self.build_joint(vert)
+
+
+class ParallelJointDirector(JointDirector):
+    @Timer(logger=logger.success)
+    def assemble(self):
+        logger.info("Constructing joint objects for {} vertices.", len(self.params.model.vertices))
+        logger.debug("Director builders: {}", self.builder_params)
         workers = psutil.cpu_count()
         verts = self.params.model.vertices.values()
         with Pool(processes=workers) as pool:
-            pool.map(self.build_joint, verts)
+            list(pool.imap_unordered(self.build_joint, verts))
