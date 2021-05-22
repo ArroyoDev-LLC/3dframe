@@ -8,24 +8,26 @@ from pathlib import Path
 import typer
 
 import threedframe.utils
-from threedframe.scad import JointDirector, JointDirectorParams
+from threedframe.scad import JointDirector, JointDirectorParams, ParallelJointDirector
 from threedframe.config import config
 from threedframe.scad.core import CoreDebugCubes
 from threedframe.scad.joint import SolidFixture, JointCoreOnlyDebug
 
 
-class DebugModes(str, Enum):
-    CORE_ONLY = "coreOnly"
-    CORE_VERTICES = "coreVertices"
+class BuildStrategy(str, Enum):
+    CORE_ONLY = "debugCoreOnly"
+    CORE_VERTICES = "debugCoreVertices"
+    PARALLEL = "parallel"
 
     @property
     def _builders(self):
         return {
-            DebugModes.CORE_ONLY: {"joint_builder": JointCoreOnlyDebug},
-            DebugModes.CORE_VERTICES: {
+            BuildStrategy.CORE_ONLY: {"joint_builder": JointCoreOnlyDebug},
+            BuildStrategy.CORE_VERTICES: {
                 "fixture_builder": SolidFixture,
                 "core_builder": CoreDebugCubes,
             },
+            BuildStrategy.PARALLEL: {"director": ParallelJointDirector},
         }
 
     @property
@@ -60,7 +62,9 @@ def generate(
     vertices: Optional[List[str]] = typer.Option(
         None, "-v", "--vertices", callback=parse_vertices, help="Vertices to render."
     ),
-    debug_mode: Optional[DebugModes] = typer.Option(None, help="Optional debug mode to utilize."),
+    build_mode: Optional[BuildStrategy] = typer.Option(
+        None, "-b", "--build-mode", help="Optional debug mode to utilize."
+    ),
     render: Optional[bool] = typer.Option(
         False, "-r", "--render", help="Render mesh.", is_flag=True
     ),
@@ -73,9 +77,12 @@ def generate(
     params = JointDirectorParams(
         model=model_path, vertices=vertices, render=render, render_file_type=render_format
     )
-    if debug_mode is not None:
-        params = JointDirectorParams(model=model_path, vertices=vertices, **debug_mode.builders)
-    director = JointDirector(params=params)
+    director_cls = JointDirector
+    if build_mode is not None:
+        builders = build_mode.builders.copy()
+        director_cls = builders.pop("director", director_cls)
+        params = JointDirectorParams(model=model_path, vertices=vertices, **builders)
+    director = director_cls(params=params)
     vert_count = "all" if vertices is None else len(vertices)
     typer.secho(
         f"Building joints for {vert_count} vertices.", bold=True, fg=typer.colors.BRIGHT_WHITE
