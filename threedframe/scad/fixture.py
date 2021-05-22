@@ -8,6 +8,7 @@ from euclid3 import Point3 as EucPoint3
 from euclid3 import Vector3 as EucVector3
 from pydantic.main import BaseModel
 
+from threedframe import utils
 from threedframe.config import config
 from threedframe.models import ModelEdge, ModelVertex
 from threedframe.constant import Constants, PlanarConstants
@@ -108,7 +109,7 @@ class Fixture(FixtureMeta):
         return sp.square(config.FIXTURE_SIZE, center=True)
 
     def do_extrude(self, obj: sp.OpenSCADObject):
-        obj = config.dotSCAD.hollow_out.hollow_out(shell_thickness=3)(obj)
+        obj = utils.hollow_out(obj, shell_thickness=3)
         obj = sp.linear_extrude(self.params.extrusion_height)(obj)
         return obj
 
