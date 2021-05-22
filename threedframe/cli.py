@@ -81,7 +81,13 @@ def generate(
     if build_mode is not None:
         builders = build_mode.builders.copy()
         director_cls = builders.pop("director", director_cls)
-        params = JointDirectorParams(model=model_path, vertices=vertices, **builders)
+        params = JointDirectorParams(
+            model=model_path,
+            vertices=vertices,
+            render=render,
+            render_file_type=render_format,
+            **builders,
+        )
     director = director_cls(params=params)
     vert_count = "all" if vertices is None else len(vertices)
     typer.secho(
