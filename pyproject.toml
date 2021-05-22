@@ -41,6 +41,7 @@ attrs = "^20.3.0"
 pydantic = "^1.8.1"
 loguru = "^0.5.3"
 typer = {version = "^0.3.2", extras = ["all"]}
+psutil = "^5.8.0"
 
 [tool.poetry.dev-dependencies]
 autoflake = "^1.4"
