@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, Type, Union, Optional, Sequence
 from pathlib import Path
 from multiprocessing import Pool
@@ -18,6 +19,22 @@ if TYPE_CHECKING:
     from .interfaces import CoreMeta, JointMeta, LabelMeta, FixtureMeta
 
 
+class RenderFileType(str, Enum):
+    STL = "stl"
+    PNG = "png"
+
+    @property
+    def _scad_args(self):
+        return {
+            RenderFileType.STL: [],
+            RenderFileType.PNG: ["--autocenter", "--viewall", "--render=full"],
+        }
+
+    @property
+    def scad_args(self):
+        return self._scad_args[self]
+
+
 class JointDirectorParams(BaseModel):
     joint_builder: Optional[Type["JointMeta"]] = Joint
     fixture_builder: Optional[Type["FixtureMeta"]] = None
@@ -27,7 +44,7 @@ class JointDirectorParams(BaseModel):
 
     vertices: Optional[Sequence[int]] = None
     render: bool = False
-    render_file_type: Optional[str] = "stl"
+    render_file_type: Optional[RenderFileType] = RenderFileType.STL
     model: Union[Path, "ModelData"]
     overwrite: bool = False
 
@@ -84,7 +101,9 @@ class JointDirector:
     def render_joint(self, scad_path: Path):
         out_path = scad_path.with_suffix(f".{self.params.render_file_type}")
         logger.success("Writing mesh -> {}", out_path)
-        proc = utils.openscad_cmd("-o", str(out_path), str(scad_path))
+        proc = utils.openscad_cmd(
+            *self.params.render_file_type.scad_args, "-o", str(out_path), str(scad_path)
+        )
         for line in iter(proc.stderr.readline, b""):
             outline = line.decode().rstrip("\n")
             logger.debug("[OpenSCAD]: {}", outline)
