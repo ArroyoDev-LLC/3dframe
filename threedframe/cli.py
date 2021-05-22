@@ -38,7 +38,6 @@ app = typer.Typer(name="3dframe")
 
 def parse_vertices(vertices: List[str]):
     if not len(vertices):
-        typer.confirm("Are you sure you want to render ALL vertices?", abort=True)
         return None
     _verts = []
     for v in vertices:
@@ -62,14 +61,24 @@ def generate(
         None, "-v", "--vertices", callback=parse_vertices, help="Vertices to render."
     ),
     debug_mode: Optional[DebugModes] = typer.Option(None, help="Optional debug mode to utilize."),
+    render: Optional[bool] = typer.Option(
+        False, "-r", "--render", help="Render mesh.", is_flag=True
+    ),
+    render_format: Optional[str] = typer.Option("stl", "-f", "--format", help="Render file type."),
 ):
     """Generate joint model from given vertices."""
-    params = JointDirectorParams(model=model_path, vertices=vertices)
+    if not vertices:
+        typer.confirm("Are you sure you want to render ALL vertices?", abort=True)
+        vertices = None  # indicates all in director params.
+    params = JointDirectorParams(
+        model=model_path, vertices=vertices, render=render, render_file_type=render_format
+    )
     if debug_mode is not None:
         params = JointDirectorParams(model=model_path, vertices=vertices, **debug_mode.builders)
     director = JointDirector(params=params)
+    vert_count = "all" if vertices is None else len(vertices)
     typer.secho(
-        f"Building joints for {len(vertices)} vertices.", bold=True, fg=typer.colors.BRIGHT_WHITE
+        f"Building joints for {vert_count} vertices.", bold=True, fg=typer.colors.BRIGHT_WHITE
     )
     director.assemble()
 
