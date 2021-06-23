@@ -24,17 +24,17 @@ WORKDIR /wheels
 RUN bash -c "cp /app/dist/* /wheels/ && cp /app/requirements.txt /wheels/ && rm -rf /app"
 
 
-FROM python:3.8 as deps
+### Base sys-library dependencies.
+FROM python:3.8-buster as deps
 
-# Install blender.
-ENV BLENDER_MAJOR 2.92
-ENV BLENDER_VERSION 2.92.0
-ENV BLENDER_URL https://download.blender.org/release/Blender${BLENDER_MAJOR}/blender-${BLENDER_VERSION}-linux64.tar.xz
-RUN curl -L ${BLENDER_URL} | tar -xJ -C /usr/local/ && \
-	mv /usr/local/blender-${BLENDER_VERSION}-linux64 /usr/local/blender
+ARG NUM_CORES=4
+ENV NUMCPU $NUM_CORES
 
 # Pymesh + OpenSCAD + Blender deps
-RUN apt-get update && apt-get install -y \
+RUN curl -L -o /get-oscad-deps.sh https://raw.githubusercontent.com/openscad/openscad/openscad-2021.01/scripts/uni-get-dependencies.sh \
+    && curl -L -o /check-oscad-deps.sh https://raw.githubusercontent.com/openscad/openscad/openscad-2021.01/scripts/check-dependencies.sh \
+    && chmod +x /get-oscad-deps.sh && chmod +x /check-oscad-deps.sh \
+    && apt-get update && apt-get install -y --no-install-recommends \
         gcc \
         g++ \
         git \
@@ -45,28 +45,64 @@ RUN apt-get update && apt-get install -y \
         libboost-dev \
         libboost-thread-dev \
         zip unzip patchelf \
-        # openscad and blender
+        # Blender specific
         curl \
         libfreetype6 \
         libglu1-mesa \
         libxi6 \
         libxrender1 \
         xz-utils \
-        openscad \
+        # OpenSCAD specific
+        libunistring-dev \
+        libglib2.0 \
+        libharfbuzz-dev \
+     && /get-oscad-deps.sh \
+     && /check-oscad-deps.sh \
      && apt-get clean \
      && rm -rf /var/lib/apt/lists/*
 
 
+### Compile OpenSCAD
+FROM deps as openscad
 
+ARG NUM_CORES=4
+ENV NUMCPU $NUM_CORES
+
+RUN git clone --branch openscad-2021.01 https://github.com/openscad/openscad.git /openscad-src \
+    && cd /openscad-src \
+    && git submodule update --init \
+    && ./scripts/check-dependencies.sh \
+    && qmake openscad.pro \
+    && make --jobs="${NUMCPU}" \
+    && cp ./openscad /openscad \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /openscad-src
+
+
+### Download Blender.
+FROM deps as blender
+
+# Install blender.
+ENV BLENDER_MAJOR 2.92
+ENV BLENDER_VERSION 2.92.0
+ENV BLENDER_URL https://download.blender.org/release/Blender${BLENDER_MAJOR}/blender-${BLENDER_VERSION}-linux64.tar.xz
+RUN curl -L ${BLENDER_URL} | tar -xJ -C /usr/local/ && \
+	mv /usr/local/blender-${BLENDER_VERSION}-linux64 /blender
+
+
+### Compile Pymesh
 FROM deps as pymesh
+
 WORKDIR /root/
 ARG BRANCH="main"
-ARG NUM_CORES=2
+ARG NUM_CORES=4
 
 RUN git clone --single-branch -b $BRANCH https://github.com/PyMesh/PyMesh.git
 
 ENV PYMESH_PATH /root/PyMesh
 ENV NUM_CORES $NUM_CORES
+ENV NUMCPU $NUM_CORES
 WORKDIR $PYMESH_PATH
 
 RUN git submodule update --init && \
@@ -78,7 +114,13 @@ RUN git submodule update --init && \
     python -c "import pymesh; pymesh.test()"
 
 
+### 3dframe App
 FROM pymesh AS app
+
+WORKDIR /app/
+COPY . /app/
+
+COPY --from=build /wheels /wheels
 
 # Container user.
 # Create User
@@ -88,20 +130,17 @@ RUN useradd \
   --no-user-group \
   --home-dir /app \
   --uid ${UID:-1000} \
-  threedframe
-
-# Install dependencies from wheels
-COPY --from=build /wheels /wheels
-RUN pip install --no-cache-dir -U pip \
+  threedframe \
+  # Install dependencies from wheels
+  && pip install --no-cache-dir -U pip \
   && pip install --no-cache-dir -f /wheels/ -r /wheels/requirements.txt \
-  && rm -rf /wheels
+  && rm -rf /wheels \
+  && pip install --no-cache-dir -e /app/ \
+  && chown -R threedframe: /app
 
-WORKDIR /app/
-COPY . /app/
-
-RUN pip install --no-cache-dir -e /app/
-
-RUN chown -R threedframe: /app
+# Copy OpenSCAD & Blender binaries
+COPY --from=openscad /openscad /usr/local/bin/openscad
+COPY --from=blender /blender /usr/local/blender
 
 USER threedframe
 ENTRYPOINT /bin/bash
