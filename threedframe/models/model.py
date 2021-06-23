@@ -1,5 +1,6 @@
 """3dframe model models."""
 import string
+import itertools
 from typing import Dict, List, Tuple, Iterator, Optional
 
 from pydantic import Field, BaseModel, validator
@@ -54,22 +55,10 @@ def label_generator() -> Iterator[str]:
     Yields: 'AA', 'AB', 'AC'...'ZW', 'ZY', 'ZZ'
 
     """
-    base_charmap = iter(string.ascii_uppercase)
-    _label_charmap = iter(string.ascii_uppercase)
-    _base_label = None
-    while True:
-        if not _base_label:
-            _base_label = next(base_charmap)
-        try:
-            label = next(_label_charmap)
-        except StopIteration:
-            try:
-                _base_label = next(base_charmap)
-            except StopIteration:
-                break
-            _label_charmap = iter(string.ascii_uppercase)
-            label = next(_label_charmap)
-        yield f"{_base_label}{label}"
+    for group_label, item_label in itertools.cycle(
+        itertools.product(string.ascii_uppercase, repeat=2)
+    ):
+        yield f"{group_label}{item_label}"
 
 
 class ModelData(BaseModel):
