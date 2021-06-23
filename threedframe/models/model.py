@@ -77,4 +77,6 @@ class ModelData(BaseModel):
         return vertex
 
 
+ModelVertex.update_forward_refs()
+ModelEdge.update_forward_refs()
 MODEL_LABELS = label_generator()
