@@ -4,13 +4,13 @@
 import sys
 import time
 import random
+import shutil
 import itertools
 import subprocess as sp
-from typing import List, Tuple, Union, Callable, Iterator, Sequence
+from typing import List, Tuple, Union, Callable, Iterator, Optional, Sequence
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-import sh
 import numpy as np
 import solid
 import sympy as S
@@ -73,18 +73,25 @@ def round_point(point: Point3, n_digits=2):
     return p.z
 
 
+def locate_executable(name: str) -> Optional[Path]:
+    """Locate full path to given executable."""
+    bin_path = shutil.which(name)
+    if bin_path is not None:
+        return Path(bin_path)
+    return bin_path
+
+
 def openscad_cmd(*args) -> sp.Popen:
     """Execute openscad command."""
-    _cmd = ["/usr/bin/openscad"]
+    _cmd = [str(locate_executable("openscad"))]
     _cmd.extend(args)
     return sp.Popen(_cmd, stdout=sp.PIPE, stderr=sp.PIPE)
 
 
 def exec_blender_script(model_path: Path, script_path: Path, out_path: Path):
     """Execute blender command."""
-    blender_loc = sh.which("blender")
     _cmd = [
-        blender_loc,
+        str(locate_executable("blender")),
         str(model_path.absolute()),
         "--background",
         "--python-use-system-env",
