@@ -1,6 +1,3 @@
-# This test code was written by the `hypothesis.extra.ghostwriter` module
-# and is provided under the Creative Commons Zero public domain dedication.
-
 from hypothesis import given
 from hypothesis import strategies as st
 from solid.solidpython import OpenSCADObject
@@ -8,15 +5,27 @@ from solid.solidpython import OpenSCADObject
 import threedframe.models
 from threedframe.models import MeshData, MeshFace, MeshPoint, ModelEdge, ModelVertex
 
+st_ModelVertex = st.builds(
+    ModelVertex,
+    label=st.one_of(st.none(), st.one_of(st.none(), st.text())),
+    edges=st.just([]) | st.deferred(lambda: st.lists(st_ModelEdge)),
+)
+
+st_MaybeVertex = st.one_of(st.none(), st_ModelVertex)
+
+st_ModelEdge = st.builds(
+    ModelEdge,
+    joint_vertex=st.none() | st_ModelVertex,
+    target_vertex=st.none() | st_ModelVertex,
+)
+
 
 @given(
     scad_object=st.builds(OpenSCADObject),
     inspect_object=st.builds(OpenSCADObject),
     inner_object=st.builds(OpenSCADObject),
-    model_edge=st.builds(ModelEdge),
-    model_vertex=st.builds(
-        ModelVertex, label=st.one_of(st.none(), st.one_of(st.none(), st.text()))
-    ),
+    model_edge=st_ModelEdge,
+    model_vertex=st_ModelVertex,
     dest_point=st.tuples(st.floats(), st.floats(), st.floats()),
     dest_normal=st.tuples(st.floats(), st.floats(), st.floats()),
     inspect_data=st.builds(dict),
@@ -105,7 +114,7 @@ def test_fuzz_MeshPoint(vidx, point, normal):
     num_edges=st.integers(),
     vertices=st.dictionaries(
         keys=st.integers(),
-        values=st.builds(ModelVertex, label=st.one_of(st.none(), st.one_of(st.none(), st.text()))),
+        values=st_ModelVertex,
     ),
 )
 def test_fuzz_ModelData(num_vertices, num_edges, vertices):
@@ -116,22 +125,28 @@ def test_fuzz_ModelData(num_vertices, num_edges, vertices):
     eidx=st.integers(),
     length=st.floats(),
     joint_vidx=st.integers(),
+    joint_vertex=st_MaybeVertex,
     target_vidx=st.integers(),
+    target_vertex=st_MaybeVertex,
     vector_ingress=st.tuples(st.floats(), st.floats(), st.floats()),
 )
-def test_fuzz_ModelEdge(eidx, length, joint_vidx, target_vidx, vector_ingress):
+def test_fuzz_ModelEdge(
+    eidx, length, joint_vidx, joint_vertex, target_vidx, target_vertex, vector_ingress
+):
     threedframe.models.ModelEdge(
         eidx=eidx,
         length=length,
         joint_vidx=joint_vidx,
+        joint_vertex=joint_vertex,
         target_vidx=target_vidx,
+        target_vertex=target_vertex,
         vector_ingress=vector_ingress,
     )
 
 
 @given(
     vidx=st.integers(),
-    edges=st.lists(st.builds(ModelEdge)),
+    edges=st.lists(st_ModelEdge),
     point=st.tuples(st.floats(), st.floats(), st.floats()),
     point_normal=st.tuples(st.floats(), st.floats(), st.floats()),
     label=st.one_of(st.none(), st.text()),
