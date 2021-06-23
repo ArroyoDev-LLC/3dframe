@@ -14,8 +14,10 @@ class ModelEdge(BaseModel):
     length: float
     # Joint vertex index.
     joint_vidx: int
+    joint_vertex: Optional["ModelVertex"]
     # Target vertex index.
     target_vidx: int
+    target_vertex: Optional["ModelVertex"]
     # Vector FROM target vertex into joint.
     vector_ingress: Tuple[float, float, float]
 
