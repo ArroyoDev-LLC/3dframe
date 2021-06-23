@@ -24,8 +24,8 @@ class LabelParams(BaseModel):
     halign: str = "center"
     valign: str = "center"
     depth: float = 1.5
-    size: float = 6
-    width: float = 9
+    size: float = config.label_size
+    width: float = config.label_width
     center: bool = True
 
 
@@ -59,7 +59,7 @@ class FixtureLabel(LabelMeta):
             if gt_optimal and gt_min_area:
                 # ensure the taxicab distance ( Σ{x-dist, y-dist} ) is at least a fixture away.
                 other_boundaries = [
-                    face.centroid_point.taxicab_distance(f) > config.FIXTURE_SIZE
+                    face.centroid_point.taxicab_distance(f) > config.fixture_size
                     for f in other_centers
                 ]
                 logger.info("Fixture label face boundary checks: {}", other_boundaries)
