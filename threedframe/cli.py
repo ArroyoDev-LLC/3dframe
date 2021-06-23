@@ -69,11 +69,13 @@ def generate(
         False, "-r", "--render", help="Render mesh.", is_flag=True
     ),
     render_format: Optional[str] = typer.Option("stl", "-f", "--format", help="Render file type."),
+    scale: Optional[float] = typer.Option(1.0, "-s", "--scale", help="Support size scale."),
 ):
     """Generate joint model from given vertices."""
     if not vertices:
         typer.confirm("Are you sure you want to render ALL vertices?", abort=True)
         vertices = None  # indicates all in director params.
+    config.SUPPORT_SCALE = scale
     params = JointDirectorParams(
         model=model_path, vertices=vertices, render=render, render_file_type=render_format
     )
