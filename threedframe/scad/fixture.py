@@ -33,7 +33,7 @@ class FixtureParams(BaseModel):
 
     @property
     def extrusion_height(self) -> float:
-        return 1.5 * Constants.INCH
+        return config.fixture_length
 
     @property
     def distance_to_origin(self) -> S.Mul:
@@ -106,10 +106,10 @@ class FixtureParams(BaseModel):
 @attr.s(auto_attribs=True)
 class Fixture(FixtureMeta):
     def create_base(self) -> sp.OpenSCADObject:
-        return sp.square(config.FIXTURE_SIZE, center=True)
+        return sp.square(config.fixture_size, center=True)
 
     def do_extrude(self, obj: sp.OpenSCADObject):
-        obj = utils.hollow_out(obj, shell_thickness=3)
+        obj = utils.hollow_out(obj, shell_thickness=config.fixture_shell_thickness)
         obj = sp.linear_extrude(self.params.extrusion_height)(obj)
         return obj
 
