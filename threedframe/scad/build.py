@@ -48,15 +48,32 @@ class JointDirectorParams(BaseModel):
     model: Union[Path, "ModelData"]
     overwrite: bool = False
 
+    @staticmethod
+    def _resolve_edge_relations(
+        model: "ModelData", vertices: Dict[int, "ModelVertex"]
+    ) -> "ModelData":
+        _vertices = {}
+        for vidx, vertex in vertices.items():
+            edges = []
+            for edge in vertex.edges:
+                if vidx == edge.joint_vidx:
+                    target = model.get_edge_target_vertex(edge)
+                    logger.info(
+                        "mapped vertex[{}] -> edge[{}] -> vertex[{}]", vidx, edge.eidx, target.vidx
+                    )
+                    edges.append(edge.copy(update=dict(joint_vertex=vertex, target_vertex=target)))
+            _vertices[vidx] = vertex.copy(update=dict(edges=edges))
+        return model.copy(update=dict(vertices=_vertices))
+
     @validator("model")
     def validate_model_data(cls, v: Union[Path, "ModelData"], values: Dict[str, Any]) -> ModelData:
         if isinstance(v, Path):
-            v = parse_file_as(ModelData, v)
+            v: ModelData = parse_file_as(ModelData, v)
         verts = values["vertices"]
         if verts is not None:
             # scoped vertices down to requested by params.
             _new_verts = {k: v for k, v in v.vertices.items() if k in verts}
-            v.vertices = _new_verts
+            v = cls._resolve_edge_relations(v, _new_verts)
         return v
 
 
