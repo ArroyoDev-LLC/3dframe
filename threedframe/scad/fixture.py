@@ -32,6 +32,10 @@ class FixtureParams(BaseModel):
         return EucPoint3(*self.source_coords)
 
     @property
+    def target_vertex(self) -> "ModelVertex":
+        return self.source_edge.target_vertex
+
+    @property
     def extrusion_height(self) -> float:
         return config.fixture_length
 
@@ -88,17 +92,19 @@ class FixtureParams(BaseModel):
         return self.source_edge.length - self.edge_length_from_fixture
 
     @property
-    def adjusted_edge_length_as_label(self) -> float:
+    def adjusted_edge_length_as_label(self) -> str:
         """Adjusted edge length properly formatted for label."""
         length_in = self.adjusted_edge_length / Constants.INCH
-        return round(length_in, 2)
+        val = str(round(length_in, 1))
+        return val.rstrip(".0")
 
     @property
     def label(self) -> str:
         return "\n".join(
             (
+                self.target_vertex.label,
+                self.adjusted_edge_length_as_label,
                 self.source_vertex.label,
-                str(self.adjusted_edge_length_as_label),
             )
         )
 
