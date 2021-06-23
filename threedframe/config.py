@@ -92,13 +92,45 @@ class _Config(BaseSettings):
             self.setup_libs()
         return self._dotSCAD
 
-    # Model Params
     GAP: float = 0.02  # 3dPrinting fudge factor.
-    CORE_SIZE: float = 1.4 * Constants.INCH
-    SUPPORT_SIZE: float = 0.69 * Constants.INCH
-    FIXTURE_WALL_THICKNESS: float = 6.0
-    FIXTURE_HOLE_SIZE: float = SUPPORT_SIZE + GAP
-    FIXTURE_SIZE: float = FIXTURE_HOLE_SIZE + FIXTURE_WALL_THICKNESS
+
+    # Support dimension scale,
+    SUPPORT_SCALE: float = 1.0
+
+    # Multipliers applied to support size.
+    CORE_SIZE_MULTIPLIER: float = 2.03
+    FIXTURE_SHELL_THICKNESS_MULTIPLIER: float = 0.1712
+    FIXTURE_LENGTH_MULTIPLIER: float = 2.1739
+    LABEL_SIZE_MULTIPLIER: float = 0.34
+    LABEL_WIDTH_MULTIPLIER: float = 0.51
+
+    @property
+    def support_size(self) -> float:
+        return self.SUPPORT_SCALE * Constants.INCH
+
+    @property
+    def core_size(self) -> float:
+        return self.support_size * self.CORE_SIZE_MULTIPLIER
+
+    @property
+    def fixture_shell_thickness(self) -> float:
+        return self.support_size * self.FIXTURE_SHELL_THICKNESS_MULTIPLIER
+
+    @property
+    def fixture_length(self) -> float:
+        return self.support_size * self.FIXTURE_LENGTH_MULTIPLIER
+
+    @property
+    def fixture_size(self) -> float:
+        return (self.support_size + self.GAP) + self.fixture_shell_thickness
+
+    @property
+    def label_size(self) -> float:
+        return self.support_size * self.LABEL_SIZE_MULTIPLIER
+
+    @property
+    def label_width(self) -> float:
+        return self.support_size * self.LABEL_WIDTH_MULTIPLIER
 
 
 config = _Config()
