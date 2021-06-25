@@ -109,3 +109,18 @@ class JointCoreOnlyDebug(Joint):
     def assemble(self):
         super().assemble()
         self.scad_object = self.core.scad_object
+
+
+class JointLabelDebug(Joint):
+    def build_labeled_fixtures(self) -> Iterator["FixtureMeta"]:
+        for fixture in self.fixtures:
+            label_params = LabelParams(
+                content=fixture.params.label, depth=config.fixture_shell_thickness / 2, center=True
+            )
+            label_obj = self.fixture_label_builder(
+                params=label_params, fixtures=self.fixtures, target=fixture, meshes=self.meshes
+            )
+            label_obj.assemble()
+            fixture.scad_object.set_modifier("#")
+            fixture.scad_object += label_obj.scad_object
+            yield fixture
