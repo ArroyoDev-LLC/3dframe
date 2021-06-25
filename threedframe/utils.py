@@ -361,3 +361,19 @@ def euclidify(an_obj: GeomType, intended_class: Optional[type] = None):
     targ_cls = smpy_map.get(an_obj.__class__, EucVector3)
     return solid.utils.euclidify(an_obj=tuple(an_obj), intended_class=targ_cls)
 
+
+def rotate_about_pt(obj: OpenSCADObject, z: float, y: float, pt: GeomType):
+    """Rotate given `obj` around `pt` based on `z` and/or `y`.
+
+    Args:
+        obj: object to rotate.
+        z: angle to rotate around z axis.
+        y: angle to rotate around y axis.
+        pt: central point of rotation.
+
+    Returns:
+        Rotated scad object.
+
+    """
+    _pt = euclidify(pt)
+    return solid.translate(_pt)(solid.rotate((0, y, z))(solid.translate(-_pt)(obj)))
