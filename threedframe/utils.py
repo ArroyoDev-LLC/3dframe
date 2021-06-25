@@ -156,7 +156,7 @@ def label_size(
     size: int = 10,
     depth: float = 0.5,
     lineSpacing: float = 1.4,
-    font: str = "Impact:style=Bold",
+    font: str = "OpenSans:style=ExtraBold",
     segments: int = 60,
     spacing: int = 1.2,
     direction: str = "ltr",
