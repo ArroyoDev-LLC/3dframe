@@ -343,3 +343,21 @@ def hollow_out(obj: OpenSCADObject, shell_thickness: int) -> OpenSCADObject:
 
     """
     return solid.difference()(obj, solid.offset(delta=-shell_thickness)(obj))
+
+
+GeomType = Union[S.Point, S.Line, solid.utils.EucOrTuple]
+
+
+def euclidify(an_obj: GeomType, intended_class: Optional[type] = None):
+    """Wraps SolidPython's `euclidify` to support Sympy types."""
+    if intended_class is not None:
+        return solid.utils.euclidify(an_obj=an_obj, intended_class=intended_class)
+    smpy_map = {
+        S.Point3D: EucPoint3,
+        S.Point2D: EucPoint2,
+        S.Line3D: EucVector3,
+        S.Line2D: EucVector2,
+    }
+    targ_cls = smpy_map.get(an_obj.__class__, EucVector3)
+    return solid.utils.euclidify(an_obj=tuple(an_obj), intended_class=targ_cls)
+
