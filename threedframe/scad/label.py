@@ -99,20 +99,39 @@ class FixtureLabel(LabelMeta):
         return current_optimal_face
 
     def do_transform(self, obj: sp.OpenSCADObject) -> sp.OpenSCADObject:
-        label_face = self.find_clear_face()
+        self.target_face = self.find_clear_face()
 
         # now that we have found an appropriate face, find the center of it to place the label.
-        face_midpoint = utils.find_center_of_gravity(
-            *label_face.sympy_vertices, label_face.missing_rect_vertex
+        self.midpoint = utils.find_center_of_gravity(
+            *self.target_face.sympy_vertices, self.target_face.missing_rect_vertex
         )
-        logger.info("Fixture label face area: {}", label_face.area)
-        face_midpoint = EucPoint3(*tuple(face_midpoint))
-        obj = sutils.transform_to_point(
-            obj,
-            dest_point=face_midpoint,
-            dest_normal=label_face.normal_vector.reflect(label_face.normal_vector),
-            src_normal=self.target.params.vector_from_origin,
+
+        logger.debug(
+            "Translating label from face midpoint {} to destination {}.",
+            self.midpoint_euc,
+            self.destination_point,
         )
+
+        trans_params = dict(
+            dest_point=self.destination_point,
+            dest_normal=-self.target_face.normal_vector,
+            src_up=self.target_face.normal_vector,
+            src_point=self.label_init_point,
+        )
+        logger.info(
+            "[{sl}@{tl}] Transforming to ({dest_point}) w/ normal @ ({dest_normal} | rnd: {dest_normal_rnd})",
+            sl=self.target.params.source_vertex.label,
+            tl=self.target_label,
+            **trans_params,
+            dest_normal_rnd=self.target_face.rounded_normal_vector.copy(),
+        )
+        logger.debug(
+            {
+                **trans_params,
+                "direction_to_origin": self.target.params.direction_to_origin,
+            }
+        )
+        obj = sutils.transform_to_point(obj, **trans_params)
         return obj
 
 
