@@ -90,7 +90,7 @@ class JointDirector:
         )
         return _build_params
 
-    @logger.catch
+    @logger.catch(reraise=True)
     def build_joint(self, vertex: "ModelVertex") -> Optional["JointMeta"]:
         scad_path = self.get_joint_file_path(vertex.vidx)
         if not self.params.overwrite and scad_path.exists() and self.params.render:
