@@ -26,8 +26,8 @@ class RenderFileType(str, Enum):
     @property
     def _scad_args(self):
         return {
-            RenderFileType.STL: [],
-            RenderFileType.PNG: ["--autocenter", "--viewall", "--render=full"],
+            RenderFileType.STL: ["--export-format=binstl"],
+            RenderFileType.PNG: ["--autocenter", "--viewall", "--render=full", "--projection=p"],
         }
 
     @property
