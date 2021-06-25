@@ -9,7 +9,7 @@ from loguru import logger
 from euclid3 import Line3 as EucLine3
 from euclid3 import Point3 as EucPoint3
 from euclid3 import Vector3 as EucVector3
-from pydantic import BaseModel
+from pydantic import Field, BaseModel
 
 from threedframe import utils
 from threedframe.config import config
@@ -25,8 +25,8 @@ class LabelParams(BaseModel):
     halign: str = "center"
     valign: str = "center"
     depth: float = 1.5
-    size: float = config.label_size
-    width: float = config.label_width
+    size: float = Field(default_factory=lambda: config.label_size)
+    width: float = Field(default_factory=lambda: config.label_width)
     center: bool = True
 
 
