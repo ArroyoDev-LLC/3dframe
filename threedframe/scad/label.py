@@ -132,6 +132,9 @@ class FixtureLabel(LabelMeta):
             }
         )
         obj = sutils.transform_to_point(obj, **trans_params)
+
+        if -self.target_face.normal_vector == sutils.UP_VEC:
+            obj = utils.rotate_about_pt(obj, -90, 0, self.destination_point)
         return obj
 
 
