@@ -35,6 +35,8 @@ def quiet_solid():
 class _Config(BaseSettings):
     # General Config.
     RENDERS_DIR: Path = Path("renders")
+    ## Log Config
+    LOG_BASE_FMT: str = "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan>"
 
     # OpenSCAD Poly Segments.
     SEGMENTS: int = 48
@@ -57,6 +59,9 @@ class _Config(BaseSettings):
     def validate_tmp_dir(cls, v: Path) -> Path:
         v.mkdir(exist_ok=True)
         return v
+
+    def create_log_format(self, fmt: str):
+        return self.LOG_BASE_FMT + fmt + " - <level>{message}</level>"
 
     def create_lib_dir(self, lib_dir: Path):
         """Create library directory.
