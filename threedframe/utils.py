@@ -13,12 +13,13 @@ from tempfile import TemporaryDirectory
 
 import numpy as np
 import solid
-import sympy
 import sympy as S
 import solid.utils
 from rich import print
 from solid import OpenSCADObject, text, union, resize, translate, scad_render, linear_extrude
+from euclid3 import Point2 as EucPoint2
 from euclid3 import Point3 as EucPoint3
+from euclid3 import Vector2 as EucVector2
 from euclid3 import Vector3 as EucVector3
 from rich.text import Text
 from rich.console import RenderableType
