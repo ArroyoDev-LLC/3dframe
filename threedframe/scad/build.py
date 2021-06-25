@@ -143,5 +143,9 @@ class ParallelJointDirector(JointDirector):
         logger.debug("Director builders: {}", self.builder_params)
         workers = psutil.cpu_count()
         verts = self.params.model.vertices.values()
+        chunk_size = len(verts) // workers
+        if len(verts) <= workers:
+            chunk_size = 1
+        logger.info("parallel chunk size: ({} // {}) = {}", len(verts), workers, chunk_size)
         with Pool(processes=workers) as pool:
-            list(pool.imap_unordered(self.build_joint, verts))
+            list(pool.imap_unordered(self.build_joint, verts, chunksize=chunk_size))
