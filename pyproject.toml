@@ -4,6 +4,7 @@ version = "0.0.0"
 description = "Generate printable joints to create a real puzzle from any 3d model."
 authors = ["Braden Mars <bradenmars@bradenmars.me>"]
 license = "MIT license"
+packages = [{ include = "threedframe", from = "." }]
 
 readme = "README.md"
 homepage = "https://github.com/BradenM/threedframe"
