@@ -13,10 +13,13 @@ from tempfile import TemporaryDirectory
 
 import numpy as np
 import solid
+import sympy
 import sympy as S
+import solid.utils
 from rich import print
 from solid import OpenSCADObject, text, union, resize, translate, scad_render, linear_extrude
-from euclid3 import Point3
+from euclid3 import Point3 as EucPoint3
+from euclid3 import Vector3 as EucVector3
 from rich.text import Text
 from rich.console import RenderableType
 from rich.progress import Task, TextColumn, SpinnerColumn, ProgressColumn
@@ -64,13 +67,13 @@ class ParentSpinnerColumn(SpinnerColumn):
         return Text.from_markup("")
 
 
-def round_point(point: Point3, n_digits=2):
+def round_point(point: Union[EucPoint3, EucVector3], n_digits=2) -> Union[EucPoint3, EucVector3]:
     """Round a given 3d point."""
     p = point.copy()
     p.x = round(p.x, n_digits)
     p.y = round(p.y, n_digits)
     p.z = round(p.z, n_digits)
-    return p.z
+    return p
 
 
 def locate_executable(name: str) -> Optional[Path]:
