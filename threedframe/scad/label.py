@@ -65,6 +65,19 @@ class FixtureLabel(LabelMeta):
     def midpoint_euc(self) -> Optional[EucPoint3]:
         return utils.euclidify(self.midpoint) if self.midpoint else None
 
+    @property
+    def destination_offset(self) -> Optional[EucPoint3]:
+        """Point offset to translate label right 'under the skin' of the fixture."""
+        coords = [-config.fixture_shell_thickness / 4] * 3
+        if self.target_face:
+            return EucPoint3(*coords) * self.target_face.normal_vector
+        return None
+
+    @property
+    def destination_point(self) -> Optional[EucPoint3]:
+        if self.target_face and self.destination_offset:
+            return self.midpoint_euc.copy() + self.destination_offset.copy()
+
     def find_clear_face(self) -> "MeshFace":
         nearest_origin_face = self.target_mesh.faces[0]
         other_centers = [m.absolute_midpoint for m in self.other_meshes.values()]
