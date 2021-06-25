@@ -156,3 +156,22 @@ class CoreLabel(LabelMeta):
             obj, dest_point=face_midpoint, dest_normal=face_norm.reflect(face_norm)
         )
         return obj
+
+
+class FixtureLabelDebug(FixtureLabel):
+    def create_arrow(
+        self, euc_line: Union[EucVector3, EucLine3], color: str, rad: int = 5
+    ) -> sp.OpenSCADObject:
+        if not self.destination_point:
+            raise RuntimeError("No destination point available!")
+        return sp.translate(self.destination_point)(
+            sutils.draw_segment(euc_line, endless=True, arrow_rad=rad, vec_color=color)
+        )
+
+    def do_transform(self, obj: sp.OpenSCADObject) -> sp.OpenSCADObject:
+        obj = super().do_transform(obj)
+        colors = utils.rand_color_generator()
+        axis = self.target.params.direction_to_origin.cross(-self.target_face.normal_vector)
+        obj += self.create_arrow(axis, color=next(colors))
+        obj += self.create_arrow(self.target_face.normal_vector, color=next(colors), rad=3)
+        return obj
