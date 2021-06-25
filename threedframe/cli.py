@@ -6,6 +6,7 @@ from typing import List, Optional
 from pathlib import Path
 
 import typer
+from devtools import debug
 
 import threedframe.utils
 from threedframe.scad import JointDirector, JointDirectorParams, ParallelJointDirector
@@ -70,6 +71,9 @@ def generate(
     ),
     render_format: Optional[str] = typer.Option("stl", "-f", "--format", help="Render file type."),
     scale: Optional[float] = typer.Option(1.0, "-s", "--scale", help="Support size scale."),
+    dump_config: Optional[bool] = typer.Option(
+        False, "-d", "--dump-config", help="Dump generated config.", is_flag=True
+    ),
 ):
     """Generate joint model from given vertices."""
     if not vertices:
@@ -92,6 +96,11 @@ def generate(
         )
     director = director_cls(params=params)
     vert_count = "all" if vertices is None else len(vertices)
+    if dump_config:
+        debug(config)
+        debug(config.computed_values)
+        debug(params)
+        return
     typer.secho(
         f"Building joints for {vert_count} vertices.", bold=True, fg=typer.colors.BRIGHT_WHITE
     )
