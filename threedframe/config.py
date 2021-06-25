@@ -110,6 +110,19 @@ class _Config(BaseSettings):
     LABEL_WIDTH_MULTIPLIER: float = 0.51
 
     @property
+    def computed_values(self):
+        attrs = {
+            "support_size",
+            "core_size",
+            "fixture_shell_thickness",
+            "fixture_length",
+            "fixture_size",
+            "label_size",
+            "label_width",
+        }
+        return {k: getattr(self, k) for k in attrs}
+
+    @property
     def support_size(self) -> float:
         return self.SUPPORT_SCALE * Constants.INCH
 
