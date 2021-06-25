@@ -1,11 +1,12 @@
 import math
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List, Union, Optional
 
 import attr
 import solid as sp
 import sympy as S
 import solid.utils as sutils
 from loguru import logger
+from euclid3 import Line3 as EucLine3
 from euclid3 import Point3 as EucPoint3
 from euclid3 import Vector3 as EucVector3
 from pydantic import BaseModel
@@ -34,6 +35,9 @@ class FixtureLabel(LabelMeta):
     fixtures: List["FixtureMeta"] = ...
     target: "FixtureMeta" = ...
     meshes: Dict[str, "MeshData"] = ...
+
+    midpoint: Optional[S.Point] = None
+    target_face: Optional["MeshFace"] = None
 
     @property
     def target_mesh(self) -> "MeshData":
