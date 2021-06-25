@@ -40,6 +40,10 @@ class FixtureLabel(LabelMeta):
     target_face: Optional["MeshFace"] = None
 
     @property
+    def target_label(self) -> str:
+        return self.target.params.target_vertex.label
+
+    @property
     def target_mesh(self) -> "MeshData":
         return self.meshes[self.target.params.label]
 
@@ -51,6 +55,15 @@ class FixtureLabel(LabelMeta):
     def other_meshes(self) -> Dict[str, "MeshData"]:
         _meshes = {k: v for k, v in self.meshes.items() if k != self.target.params.label}
         return _meshes
+
+    @property
+    def label_init_point(self) -> EucPoint3:
+        """Label starting coordinates."""
+        return EucPoint3(0, config.label_size, 0)
+
+    @property
+    def midpoint_euc(self) -> Optional[EucPoint3]:
+        return utils.euclidify(self.midpoint) if self.midpoint else None
 
     def find_clear_face(self) -> "MeshFace":
         nearest_origin_face = self.target_mesh.faces[0]
