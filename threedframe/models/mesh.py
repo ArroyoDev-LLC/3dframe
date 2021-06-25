@@ -10,10 +10,10 @@ from euclid3 import Point3, Vector3
 from pydantic import BaseModel
 from pydantic.fields import PrivateAttr
 
-import utils
 from threedframe import mesh as meshutil
 from threedframe.utils import (
     TemporaryScadWorkspace,
+    round_point,
     find_center_of_gravity,
     find_missing_rect_vertex,
 )
@@ -115,7 +115,7 @@ class MeshFace(BaseModel):
 
     @property
     def rounded_normal_vector(self):
-        return utils.round_point(self.normal_vector, 0)
+        return round_point(self.normal_vector, 0)
 
     @cached_property
     def centroid_point(self) -> S.Point3D:
