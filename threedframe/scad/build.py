@@ -70,10 +70,11 @@ class JointDirectorParams(BaseModel):
         if isinstance(v, Path):
             v: ModelData = parse_file_as(ModelData, v)
         verts = values["vertices"]
+        resolve_verts = v.vertices
         if verts is not None:
             # scoped vertices down to requested by params.
-            _new_verts = {k: v for k, v in v.vertices.items() if k in verts}
-            v = cls._resolve_edge_relations(v, _new_verts)
+            resolve_verts = {k: v for k, v in v.vertices.items() if k in verts}
+        v = cls._resolve_edge_relations(v, resolve_verts)
         return v
 
 
