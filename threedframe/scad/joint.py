@@ -5,6 +5,7 @@ import solid as sp
 
 from threedframe import mesh as meshutil
 from threedframe import utils
+from threedframe.config import config
 from threedframe.models.mesh import MeshData, analyze_scad
 from threedframe.scad.interfaces import JointMeta, LabelMeta
 
@@ -42,7 +43,11 @@ class Joint(JointMeta):
 
     def build_labeled_fixtures(self) -> Iterator["FixtureMeta"]:
         for fixture in self.fixtures:
-            label_params = LabelParams(content=fixture.params.label)
+            label_params = LabelParams(
+                content=fixture.params.label,
+                depth=config.fixture_shell_thickness / 1.9,
+                center=True,
+            )
             label_obj = self.fixture_label_builder(
                 params=label_params, fixtures=self.fixtures, target=fixture, meshes=self.meshes
             )
