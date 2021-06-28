@@ -58,6 +58,10 @@ class Joint(JointMeta):
     def build_core(self) -> "CoreMeta":
         core = self.core_builder(fixtures=self.fixtures, meshes=self.meshes)
         core.assemble()
+        # ensure core-facing joint is hollowed out.
+        for solid_fix in self.solid_fixtures:
+            overlap = core.scad_object.copy() * solid_fix.scad_object.copy()
+            core.scad_object -= overlap
         return core
 
     def build_core_joint_mesh(self, solid_fixtures: List["FixtureMeta"]) -> Dict[str, Any]:
@@ -95,11 +99,11 @@ class Joint(JointMeta):
     def assemble(self):
         self.fixtures = list(self.build_fixtures())
         solid_fixture_meshes = list(self.build_fixture_meshes())
-        solid_fixtures: List["FixtureMeta"] = [f[0] for f in solid_fixture_meshes]
+        self.solid_fixtures: List["FixtureMeta"] = [f[0] for f in solid_fixture_meshes]
         self.meshes = {k.params.label: v for k, v in solid_fixture_meshes}
         self.core = self.build_core()
         self.fixtures = list(self.build_labeled_fixtures())
-        core_inspect_data = self.build_core_joint_mesh(solid_fixtures)
+        core_inspect_data = self.build_core_joint_mesh(self.solid_fixtures)
         self.core = self.build_core_label(core_inspect_data)
         scad_objects = [self.core.scad_object] + [f.scad_object for f in self.fixtures]
         self.scad_object = sp.union()(*scad_objects)

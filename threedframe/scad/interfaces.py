@@ -83,6 +83,7 @@ class JointMeta(ScadMeta, abc.ABC):
     meshes: Dict[str, "MeshData"] = attr.ib(init=False)
     core: "CoreMeta" = attr.ib(init=False)
     fixtures: List["FixtureMeta"] = attr.ib(init=False)
+    solid_fixtures: List["FixtureMeta"] = attr.ib(init=False)
 
     fixture_builder: Type["FixtureMeta"] = ...
     fixture_label_builder: Type["LabelMeta"] = ...
