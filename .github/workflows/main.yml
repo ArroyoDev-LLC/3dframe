@@ -76,4 +76,4 @@ jobs:
                   password: ${{ secrets.DOCKER_PASSWORD }}
 
             - name: Build
-              run: docker run --rm --user 100 --entrypoint /app/threedframe/cli.py -v .:/app/ ghcr.io/arroyodev-llc/threedframe:latest generate data/cybersticks.json -v 1-10 --render -b parallel
+              run: docker run --rm --user 100 --entrypoint /app/threedframe/cli.py -v $(pwd):/app/ ghcr.io/arroyodev-llc/threedframe:latest generate data/cybersticks.json -v 1-10 --render -b parallel
