@@ -35,6 +35,12 @@ def quiet_solid():
 class _Config(BaseSettings):
     # General Config.
     RENDERS_DIR: Path = Path("renders")
+
+    @validator("RENDERS_DIR")
+    def validate_renders_dir(cls, v: Path) -> Path:
+        v.mkdir(exist_ok=True)
+        return v
+
     ## Log Config
     LOG_BASE_FMT: str = "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan>"
 
