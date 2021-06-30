@@ -86,7 +86,6 @@ jobs:
             - name: Determine Targets
               run: |
                   mkdir -p renders
-                  chown -R 1000 renders
                   WORKER_NUM="${{ matrix.worker }}"
                   ROOT=$(git rev-parse --show-toplevel)
                   DATA_PATH="${ROOT}/data/cybersticks.json"
@@ -104,7 +103,7 @@ jobs:
                   echo "VERTS=${VERTS}" >> $GITHUB_ENV
 
             - name: Build
-              run: docker run --rm --entrypoint /app/threedframe/cli.py -v $(pwd):/app/ ghcr.io/arroyodev-llc/threedframe:latest generate data/cybersticks.json -v ${{ join(env.VERTS, ' -v') }} --render -b parallel
+              run: docker run --user $(id -u) --rm --entrypoint /app/threedframe/cli.py -v $(pwd):/app/ ghcr.io/arroyodev-llc/threedframe:latest generate data/cybersticks.json -v ${{ join(env.VERTS, ' -v') }} --render -b parallel
 
             - name: Upload Renders
               uses: actions/upload-artifact@v2
