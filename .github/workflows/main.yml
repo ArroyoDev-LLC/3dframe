@@ -69,7 +69,7 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                worker: [1, 2, 3, 4]
+                worker: [1, 2, 3, 4, 5, 6, 7, 8]
         steps:
             - name: Checkout
               uses: actions/checkout@v2
@@ -97,7 +97,7 @@ jobs:
                   VERT_RANGE=$(seq 0 $VERT_COUNT)
                   # Selected vertices
                   declare -a VERTS
-                  readarray -t VERTS < <(xargs -n 4 <<<$VERT_RANGE | awk "{print \$${WORKER_NUM}}")
+                  readarray -t VERTS < <(xargs -n 8 <<<$VERT_RANGE | awk "{print \$${WORKER_NUM}}")
                   printf "Selected Vertices:\n"
                   declare -p VERTS
                   echo "VERTS=${VERTS}" >> $GITHUB_ENV
