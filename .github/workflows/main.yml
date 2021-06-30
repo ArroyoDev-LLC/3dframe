@@ -127,5 +127,5 @@ jobs:
             - name: Upload Renders
               uses: actions/upload-artifact@v2
               with:
-                  name: renders-${{ matrix.worker }}
+                  name: renders-${{ matrix.worker }}-${{ matrix.scale }}scale
                   path: ./renders
