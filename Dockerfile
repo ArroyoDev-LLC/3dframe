@@ -120,6 +120,8 @@ FROM pymesh AS app
 WORKDIR /app/
 COPY . /app/
 
+ENV UID 1000
+
 COPY --from=build /wheels /wheels
 
 # Container user.

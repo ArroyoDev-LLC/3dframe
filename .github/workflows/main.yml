@@ -85,6 +85,7 @@ jobs:
 
             - name: Determine Targets
               run: |
+                  mkdir -p renders
                   WORKER_NUM="${{ matrix.worker }}"
                   ROOT=$(git rev-parse --show-toplevel)
                   DATA_PATH="${ROOT}/data/cybersticks.json"
