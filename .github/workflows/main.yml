@@ -102,7 +102,7 @@ jobs:
                   echo "VERTS=${VERTS}" >> $GITHUB_ENV
 
             - name: Build
-              run: docker run --rm --user 1000 --entrypoint /app/threedframe/cli.py -v $(pwd):/app/ ghcr.io/arroyodev-llc/threedframe:latest generate data/cybersticks.json -v ${{ join(env.VERTS, ' -v') }} --render -b parallel
+              run: docker run --rm --entrypoint /app/threedframe/cli.py -v $(pwd):/app/ ghcr.io/arroyodev-llc/threedframe:latest generate data/cybersticks.json -v ${{ join(env.VERTS, ' -v') }} --render -b parallel
 
             - name: Upload Renders
               uses: actions/upload-artifact@v2
