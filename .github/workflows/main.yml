@@ -103,3 +103,9 @@ jobs:
 
             - name: Build
               run: docker run --rm --user 1000 --entrypoint /app/threedframe/cli.py -v $(pwd):/app/ ghcr.io/arroyodev-llc/threedframe:latest generate data/cybersticks.json -v ${{ join(env.VERTS, ' -v') }} --render -b parallel
+
+            - name: Upload Renders
+              uses: actions/upload-artifact@v2
+              with:
+                  name: renders-${{ matrix.worker }}
+                  path: ./renders
