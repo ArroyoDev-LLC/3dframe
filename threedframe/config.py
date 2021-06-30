@@ -149,6 +149,10 @@ class _Config(BaseSettings):
         return (self.support_size + self.GAP) + self.fixture_shell_thickness
 
     @property
+    def fixture_hole_size(self) -> float:
+        return self.support_size + self.GAP
+
+    @property
     def label_size(self) -> float:
         return self.support_size * self.LABEL_SIZE_MULTIPLIER
 
