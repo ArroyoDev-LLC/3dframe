@@ -12,17 +12,11 @@ import threedframe.scad.label
 @given(
     scad_object=st.none(),
     params=st.just(Ellipsis),
-    fixtures=st.just(Ellipsis),
-    target=st.just(Ellipsis),
-    meshes=st.just(Ellipsis),
 )
-def test_fuzz_FixtureLabel(scad_object, params, fixtures, target, meshes):
+def test_fuzz_FixtureLabel(scad_object, params):
     threedframe.scad.label.FixtureLabel(
         scad_object=scad_object,
         params=params,
-        fixtures=fixtures,
-        target=target,
-        meshes=meshes,
     )
 
 
