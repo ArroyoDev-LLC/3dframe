@@ -228,7 +228,7 @@ class CoreLabel(LabelMeta):
         return obj
 
 
-class FixtureLabelDebug(FixtureLabel):
+class FixtureLabelDebugArrows(FixtureLabel):
     def create_arrow(
         self, euc_line: Union[EucVector3, EucLine3], color: str, rad: int = 5
     ) -> sp.OpenSCADObject:
