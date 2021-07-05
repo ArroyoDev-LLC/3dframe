@@ -32,7 +32,7 @@ computed_vals = [
     ),
     (
         "label_width",
-        10.725,
+        16.65,
     ),
 ]
 
