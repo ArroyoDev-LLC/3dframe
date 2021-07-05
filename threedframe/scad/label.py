@@ -54,7 +54,7 @@ class FixtureLabelParams(LabelParams):
         arbitrary_types_allowed = True
 
     def dict(self, **kws) -> "DictStrAny":
-        base_kws = dict(exclude={"fixtures", "target", "meshes"})
+        base_kws = dict(exclude={"fixtures", "target", "meshes", "position"})
         base_kws.update(kws)
         return super().dict(**base_kws)
 
