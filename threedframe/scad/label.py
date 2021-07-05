@@ -109,7 +109,14 @@ class FixtureLabelParams(LabelParams):
     @property
     def destination_point(self) -> Optional[EucPoint3]:
         if self.target_face and self.destination_offset:
-            return self.midpoint_euc.copy() + self.destination_offset.copy()
+            pt = self.midpoint_euc.copy() + self.destination_offset.copy()
+            if self.position != FixtureLabelPosition.CENTER:
+                pos_offset = 4 if self.position == FixtureLabelPosition.ORIGIN else -4
+                pt = pt + (EucPoint3(*[pos_offset] * 3) * self.v_axis.copy())
+            logger.info(
+                "determined pos {}: [mpt: {}] [pt: {}]", self.position, self.midpoint_euc, pt
+            )
+            return pt
 
     @property
     def midpoint(self) -> Optional[S.Point3D]:
