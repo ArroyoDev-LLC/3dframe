@@ -113,7 +113,7 @@ class _Config(BaseSettings):
     FIXTURE_SHELL_THICKNESS_MULTIPLIER: float = 0.1712
     FIXTURE_LENGTH_MULTIPLIER: float = 2.1739
     LABEL_SIZE_MULTIPLIER: float = 0.408
-    LABEL_WIDTH_MULTIPLIER: float = 0.612
+    LABEL_WIDTH_MULTIPLIER: float = 0.95
 
     @property
     def computed_values(self):
