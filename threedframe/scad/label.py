@@ -93,6 +93,20 @@ class FixtureLabelParams(LabelParams):
         return None
 
     @property
+    def h_axis(self) -> Optional[EucVector3]:
+        """Vector that runs through target face midpoint horizontally."""
+        if self.target_face:
+            return self.target.params.direction_to_origin.cross(-self.target_face.normal_vector)
+
+    @property
+    def v_axis(self) -> Optional[EucVector3]:
+        """Vector that runs through target face midpoint vertically."""
+        if self.target_face:
+            return self.h_axis.rotate_around(
+                self.target_face.normal_vector, self.h_axis.angle(self.midpoint_euc.copy())
+            )
+
+    @property
     def destination_point(self) -> Optional[EucPoint3]:
         if self.target_face and self.destination_offset:
             return self.midpoint_euc.copy() + self.destination_offset.copy()
