@@ -25,13 +25,14 @@ computed_vals = [
         "fixture_size",
         20.54,
     ),
+    ("fixture_hole_size", 17.55),
     (
         "label_size",
-        6.0,
+        7.15,
     ),
     (
         "label_width",
-        9.0,
+        10.725,
     ),
 ]
 
