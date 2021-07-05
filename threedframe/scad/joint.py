@@ -41,21 +41,28 @@ class Joint(JointMeta):
             solid_fix.assemble()
             yield solid_fix, analyze_scad(solid_fix.scad_object)
 
+    def build_fixture_labels(self, fixture: "FixtureMeta") -> Iterator["LabelMeta"]:
+        src_label_params = FixtureLabelParams(
+            content=fixture.params.source_label,
+            depth=config.fixture_shell_thickness / 1.9,
+            center=True,
+            fixtures=self.fixtures,
+            target=fixture,
+            meshes=self.meshes,
+        )
+        label_obj = self.fixture_label_builder(params=src_label_params)
+        label_obj.assemble()
+        yield label_obj
+        for idx, content in enumerate([fixture.params.length_label, fixture.params.target_label]):
+            params = src_label_params.copy(update=dict(content=content, position=idx + 1))
+            _label_obj = self.fixture_label_builder(params=params)
+            _label_obj.assemble()
+            yield _label_obj
+
     def build_labeled_fixtures(self) -> Iterator["FixtureMeta"]:
         for fixture in self.fixtures:
-            label_params = FixtureLabelParams(
-                content=fixture.params.label,
-                depth=config.fixture_shell_thickness / 1.9,
-                center=True,
-                fixtures=self.fixtures,
-                target=fixture,
-                meshes=self.meshes,
-            )
-            label_obj = self.fixture_label_builder(
-                params=label_params,
-            )
-            label_obj.assemble()
-            fixture.scad_object -= label_obj.scad_object
+            for fix_label in self.build_fixture_labels(fixture):
+                fixture.scad_object -= fix_label.scad_object
             yield fixture
 
     def build_core(self) -> "CoreMeta":
@@ -121,13 +128,7 @@ class JointCoreOnlyDebug(Joint):
 class JointLabelDebug(Joint):
     def build_labeled_fixtures(self) -> Iterator["FixtureMeta"]:
         for fixture in self.fixtures:
-            label_params = LabelParams(
-                content=fixture.params.label, depth=config.fixture_shell_thickness / 2, center=True
-            )
-            label_obj = self.fixture_label_builder(
-                params=label_params, fixtures=self.fixtures, target=fixture, meshes=self.meshes
-            )
-            label_obj.assemble()
             fixture.scad_object.set_modifier("#")
-            fixture.scad_object += label_obj.scad_object
+            for fix_label in self.build_fixture_labels(fixture):
+                fixture.scad_object += fix_label.scad_object
             yield fixture
