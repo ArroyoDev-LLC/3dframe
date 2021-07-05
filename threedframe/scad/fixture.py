@@ -98,6 +98,22 @@ class FixtureParams(BaseModel):
         return val.rstrip(".0")
 
     @property
+    def source_label(self) -> str:
+        return self.source_vertex.label
+
+    @property
+    def target_label(self) -> str:
+        return self.target_vertex.label
+
+    @property
+    def length_label(self) -> str:
+        return self.adjusted_edge_length_as_label
+
+    @property
+    def label_depth(self) -> str:
+        return config.fixture_shell_thickness / 1.9
+
+    @property
     def label(self) -> str:
         return "\n".join(
             (
