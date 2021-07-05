@@ -1,4 +1,5 @@
 import math
+from enum import IntEnum
 from typing import TYPE_CHECKING, Any, Dict, List, Tuple, Union, Optional
 from functools import cached_property
 
@@ -33,10 +34,17 @@ class LabelParams(BaseModel):
     center: bool = True
 
 
+class FixtureLabelPosition(IntEnum):
+    ORIGIN = 0
+    CENTER = 1
+    TAIL = 2
+
+
 class FixtureLabelParams(LabelParams):
     fixtures: List[FixtureMeta] = ...
     target: FixtureMeta = ...
     meshes: Dict[str, MeshData] = ...
+    position: FixtureLabelPosition = FixtureLabelPosition.ORIGIN
 
     _midpoint: Optional[S.Point] = PrivateAttr(default=None)
     _target_face: Optional[MeshFace] = PrivateAttr(default=None)
