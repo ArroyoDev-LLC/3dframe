@@ -161,6 +161,10 @@ class _Config(BaseSettings):
         return self.support_size * self.LABEL_WIDTH_MULTIPLIER
 
     @property
+    def label_char_width(self) -> float:
+        return self.label_width / 2
+
+    @property
     def label_line_height(self) -> float:
         return self.fixture_length / 3.5
 
