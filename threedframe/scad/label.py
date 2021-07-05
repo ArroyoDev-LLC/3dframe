@@ -111,7 +111,11 @@ class FixtureLabelParams(LabelParams):
         if self.target_face and self.destination_offset:
             pt = self.midpoint_euc.copy() + self.destination_offset.copy()
             if self.position != FixtureLabelPosition.CENTER:
-                pos_offset = 4 if self.position == FixtureLabelPosition.ORIGIN else -4
+                pos_offset = (
+                    config.label_line_height
+                    if self.position == FixtureLabelPosition.ORIGIN
+                    else -config.label_line_height
+                )
                 pt = pt + (EucPoint3(*[pos_offset] * 3) * self.v_axis.copy())
             logger.info(
                 "determined pos {}: [mpt: {}] [pt: {}]", self.position, self.midpoint_euc, pt
