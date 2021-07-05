@@ -10,7 +10,7 @@ from threedframe.models.mesh import MeshData, analyze_scad
 from threedframe.scad.interfaces import JointMeta, LabelMeta
 
 from .core import Core
-from .label import CoreLabel, LabelParams, FixtureLabel
+from .label import CoreLabel, LabelParams, FixtureLabel, FixtureLabelParams
 from .fixture import Fixture, SolidFixture, FixtureParams
 
 if TYPE_CHECKING:
@@ -43,13 +43,16 @@ class Joint(JointMeta):
 
     def build_labeled_fixtures(self) -> Iterator["FixtureMeta"]:
         for fixture in self.fixtures:
-            label_params = LabelParams(
+            label_params = FixtureLabelParams(
                 content=fixture.params.label,
                 depth=config.fixture_shell_thickness / 1.9,
                 center=True,
+                fixtures=self.fixtures,
+                target=fixture,
+                meshes=self.meshes,
             )
             label_obj = self.fixture_label_builder(
-                params=label_params, fixtures=self.fixtures, target=fixture, meshes=self.meshes
+                params=label_params,
             )
             label_obj.assemble()
             fixture.scad_object -= label_obj.scad_object
