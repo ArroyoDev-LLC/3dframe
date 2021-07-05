@@ -1,6 +1,6 @@
 import math
 from enum import IntEnum
-from typing import TYPE_CHECKING, Any, Dict, List, Tuple, Union, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Union, Optional
 from functools import cached_property
 
 import attr
@@ -25,13 +25,26 @@ if TYPE_CHECKING:
 
 
 class LabelParams(BaseModel):
-    content: Union[str, Tuple[str, str, str]]
+    content: str
     halign: str = "center"
     valign: str = "center"
     depth: float = 1.5
     size: float = Field(default_factory=lambda: config.label_size)
-    width: float = Field(default_factory=lambda: config.label_width)
+    char_width: float = Field(default_factory=lambda: config.label_char_width)
     center: bool = True
+
+    @property
+    def width(self):
+        if len(self.content) <= 2:
+            return self.char_width * len(self.content)
+        return self.char_width * 2
+
+    def dict(self, **kws) -> "DictStrAny":
+        base_kws = dict(exclude={"char_width"})
+        base_kws.update(kws)
+        base = super().dict(**base_kws)
+        base.setdefault("width", self.width)
+        return base
 
 
 class FixtureLabelPosition(IntEnum):
@@ -54,7 +67,7 @@ class FixtureLabelParams(LabelParams):
         arbitrary_types_allowed = True
 
     def dict(self, **kws) -> "DictStrAny":
-        base_kws = dict(exclude={"fixtures", "target", "meshes", "position"})
+        base_kws = dict(exclude={"fixtures", "target", "meshes", "position", "char_width"})
         base_kws.update(kws)
         return super().dict(**base_kws)
 
