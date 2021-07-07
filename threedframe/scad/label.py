@@ -58,6 +58,7 @@ class FixtureLabelParams(LabelParams):
     target: FixtureMeta = ...
     meshes: Dict[str, MeshData] = ...
     position: FixtureLabelPosition = FixtureLabelPosition.ORIGIN
+    opposing_face_idx: Optional[int] = None
 
     _midpoint: Optional[S.Point] = PrivateAttr(default=None)
     _target_face: Optional[MeshFace] = PrivateAttr(default=None)
@@ -67,9 +68,16 @@ class FixtureLabelParams(LabelParams):
         arbitrary_types_allowed = True
 
     def dict(self, **kws) -> "DictStrAny":
-        base_kws = dict(exclude={"fixtures", "target", "meshes", "position", "char_width"})
+        base_kws = dict(
+            exclude={"fixtures", "target", "meshes", "position", "char_width", "opposing_face_idx"}
+        )
         base_kws.update(kws)
         return super().dict(**base_kws)
+
+    @property
+    def opposing_face(self) -> Optional["MeshFace"]:
+        if self.opposing_face_idx:
+            return self.target_mesh.faces[self.opposing_face_idx]
 
     @property
     def target_label(self) -> str:
@@ -150,11 +158,29 @@ class FixtureLabelParams(LabelParams):
             self._target_face = self.find_clear_face()
         return self._target_face
 
+    @property
+    def available_faces(self) -> List["MeshFace"]:
+        """Mesh faces available for label placement.
+
+        If an existing (opposing) face is already labeled,
+        return every other face sorted greatest to least distance from
+        the opposing face.
+
+        """
+        if not self.opposing_face:
+            return self.target_mesh.faces
+        _faces = [f for f in self.target_mesh.faces if f.fidx != self.opposing_face_idx]
+        return sorted(
+            _faces,
+            key=lambda f: f.centroid_point.distance(self.opposing_face.centroid_point),
+            reverse=True,
+        )
+
     def find_clear_face(self) -> "MeshFace":
         nearest_origin_face = self.target_mesh.faces[0]
         other_centers = [m.absolute_midpoint for m in self.other_meshes.values()]
         current_optimal_face = nearest_origin_face
-        for face in self.target_mesh.faces:
+        for face in self.available_faces:
             gt_optimal = face.area > current_optimal_face.area
             # this filter prevents labels from ending up on the ends.
             gt_min_area = face.area > math.ceil(self.smallest_face.area)
@@ -205,6 +231,8 @@ class FixtureLabel(LabelMeta):
 
         if -self.params.target_face.normal_vector == sutils.UP_VEC:
             obj = utils.rotate_about_pt(obj, -90, 0, self.params.destination_point)
+        if -self.params.target_face.normal_vector == sutils.DOWN_VEC:
+            obj = utils.rotate_about_pt(obj, 90, 0, self.params.destination_point)
         return obj
 
 
