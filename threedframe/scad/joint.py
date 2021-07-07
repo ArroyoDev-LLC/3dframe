@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, List, Type, Tuple, Iterator
+from typing import TYPE_CHECKING, Any, Dict, List, Type, Tuple, Iterator, Optional
 
 import attr
 import solid as sp
@@ -41,7 +41,9 @@ class Joint(JointMeta):
             solid_fix.assemble()
             yield solid_fix, analyze_scad(solid_fix.scad_object)
 
-    def build_fixture_labels(self, fixture: "FixtureMeta") -> Iterator["LabelMeta"]:
+    def build_fixture_labels(
+        self, fixture: "FixtureMeta", opposing_face: Optional[int] = None
+    ) -> Iterator["FixtureLabel"]:
         src_label_params = FixtureLabelParams(
             content=fixture.params.source_label,
             depth=config.fixture_shell_thickness / 1.9,
@@ -49,6 +51,7 @@ class Joint(JointMeta):
             fixtures=self.fixtures,
             target=fixture,
             meshes=self.meshes,
+            opposing_face_idx=opposing_face,
         )
         label_obj = self.fixture_label_builder(params=src_label_params)
         label_obj.assemble()
@@ -58,6 +61,10 @@ class Joint(JointMeta):
             _label_obj = self.fixture_label_builder(params=params)
             _label_obj.assemble()
             yield _label_obj
+        if opposing_face is None:
+            yield from self.build_fixture_labels(
+                fixture, opposing_face=label_obj.params.target_face.fidx
+            )
 
     def build_labeled_fixtures(self) -> Iterator["FixtureMeta"]:
         for fixture in self.fixtures:
