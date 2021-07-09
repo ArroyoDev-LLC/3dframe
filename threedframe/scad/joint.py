@@ -105,3 +105,12 @@ class JointLabelDebug(Joint):
         self.scad_object = sp.union()(*[~f.scad_object for f in self.fixtures])
 
 
+class JointSingleFixtureDebug(JointLabelDebug):
+    def build_fixture_params(self) -> Iterator[FixtureParams]:
+        edge = self.vertex.edges[1]
+        params = FixtureParams(source_edge=edge, source_vertex=self.vertex)
+        yield params
+
+    def assemble(self):
+        self.fixtures = list(self.build_fixtures())
+        self.scad_object = self.fixtures[0].scad_object
