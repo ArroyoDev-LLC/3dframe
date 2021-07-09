@@ -14,9 +14,10 @@ from tempfile import TemporaryDirectory
 import numpy as np
 import solid
 import sympy as S
-import solid.utils
+import solid.extensions.legacy.utils as sutils
 from rich import print
-from solid import OpenSCADObject, text, union, resize, translate, scad_render, linear_extrude
+from solid import text, union, resize, translate, scad_render, linear_extrude
+from loguru import logger
 from euclid3 import Point2 as EucPoint2
 from euclid3 import Point3 as EucPoint3
 from euclid3 import Vector2 as EucVector2
@@ -26,6 +27,8 @@ from rich.console import RenderableType
 from rich.progress import Task, TextColumn, SpinnerColumn, ProgressColumn
 from watchdog.events import PatternMatchingEventHandler
 from watchdog.observers import Observer
+from solid.core.object_base import OpenSCADObject
+from solid.extensions.scad_interface import ScadInterface
 
 
 class ComputeTestResultsColumn(ProgressColumn):
@@ -113,8 +116,12 @@ def exec_blender_script(model_path: Path, script_path: Path, out_path: Path):
     return sp.run(_cmd, check=True, env=_cmd_env)
 
 
-def write_scad(element: OpenSCADObject, path: Path, segments=48):
-    out_render = scad_render(element, file_header=f"$fn = {segments};")
+def write_scad(element: OpenSCADObject, path: Path, segments=48, header: Optional[str] = None):
+    scad_int = ScadInterface()
+    file_header = header or f"$fn = {segments};"
+    scad_int.additional_header_code(file_header)
+    out_render = scad_render(element, scad_interface=scad_int)
+    logger.info("Writing scad to: {}", path)
     path.write_text(out_render)
     return out_render
 
@@ -346,13 +353,13 @@ def hollow_out(obj: OpenSCADObject, shell_thickness: int) -> OpenSCADObject:
     return solid.difference()(obj, solid.offset(delta=-shell_thickness)(obj))
 
 
-GeomType = Union[S.Point, S.Line, solid.utils.EucOrTuple]
+GeomType = Union[S.Point, S.Line, sutils.EucOrTuple]
 
 
 def euclidify(an_obj: GeomType, intended_class: Optional[type] = None):
     """Wraps SolidPython's `euclidify` to support Sympy types."""
     if intended_class is not None:
-        return solid.utils.euclidify(an_obj=an_obj, intended_class=intended_class)
+        return sutils.euclidify(an_obj=an_obj, intended_class=intended_class)
     smpy_map = {
         S.Point3D: EucPoint3,
         S.Point2D: EucPoint2,
@@ -360,7 +367,7 @@ def euclidify(an_obj: GeomType, intended_class: Optional[type] = None):
         S.Line2D: EucVector2,
     }
     targ_cls = smpy_map.get(an_obj.__class__, EucVector3)
-    return solid.utils.euclidify(an_obj=tuple(an_obj), intended_class=targ_cls)
+    return sutils.euclidify(an_obj=tuple(an_obj), intended_class=targ_cls)
 
 
 def rotate_about_pt(obj: OpenSCADObject, z: float, y: float, pt: GeomType):
