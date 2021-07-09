@@ -15,7 +15,7 @@ computed_vals = [
     ),
     (
         "fixture_shell_thickness",
-        3.0,
+        6.0,
     ),
     (
         "fixture_length",
