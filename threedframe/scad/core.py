@@ -3,7 +3,8 @@ from typing import TYPE_CHECKING, List, Tuple, Union, Iterator
 import attr
 import solid as sp
 import sympy as S
-from solid import utils as sputils
+import solid.extensions.legacy.utils as sputils
+from solid.core.object_base import OpenSCADObject
 
 from threedframe import utils
 from threedframe.scad.interfaces import CoreMeta
@@ -32,7 +33,7 @@ class Core(CoreMeta):
         vertex: S.Point,
         *,
         color: Union[str, Tuple[int, ...]] = "red",
-    ) -> sp.OpenSCADObject:
+    ) -> OpenSCADObject:
         # First face is nearest to origin.
         face_norm = face.normal
         cube_color = sp.color(color) if isinstance(color, str) else sp.color(c=color)
@@ -48,7 +49,7 @@ class Core(CoreMeta):
         self,
         fixture: "FixtureMeta",
         **kwargs,
-    ) -> Iterator[sp.OpenSCADObject]:
+    ) -> Iterator[OpenSCADObject]:
         solid_mesh = self.meshes[fixture.params.label]
         face = solid_mesh.faces[0]
         vertices = [v.as_sympy for v in face.vertices]
@@ -56,7 +57,7 @@ class Core(CoreMeta):
         for vertex in all_vertices:
             yield self.create_vertex_cube(face, face_midpoint, vertex, **kwargs)
 
-    def create_hull_cubes(self) -> Iterator[sp.OpenSCADObject]:
+    def create_hull_cubes(self) -> Iterator[OpenSCADObject]:
         color_gen = utils.rand_color_generator()
         for fix in self.fixtures:
             yield from self.create_fixture_inner_vertex_cubes(fix, color=next(color_gen))
@@ -67,7 +68,7 @@ class CoreDebugCubes(Core):
         self,
         fixture: "FixtureMeta",
         **kwargs,
-    ) -> Iterator[sp.OpenSCADObject]:
+    ) -> Iterator[OpenSCADObject]:
         solid_mesh = self.meshes[fixture.params.label]
         face = solid_mesh.faces[0]
         vertices = [v.as_sympy for v in face.vertices]
