@@ -1,16 +1,15 @@
-from typing import TYPE_CHECKING, Any, Dict, List, Type, Tuple, Iterator, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Type, Tuple, Iterator
 
 import attr
 import solid as sp
 
 from threedframe import mesh as meshutil
 from threedframe import utils
-from threedframe.config import config
 from threedframe.models.mesh import MeshData, analyze_scad
 from threedframe.scad.interfaces import JointMeta, LabelMeta
 
 from .core import Core
-from .label import CoreLabel, LabelParams, FixtureLabel, FixtureLabelParams
+from .label import CoreLabel, LabelParams, FixtureLabel
 from .fixture import Fixture, SolidFixture, FixtureParams
 
 if TYPE_CHECKING:
@@ -31,7 +30,7 @@ class Joint(JointMeta):
 
     def build_fixtures(self) -> Iterator["FixtureMeta"]:
         for params in self.build_fixture_params():
-            fix = self.fixture_builder(params=params)
+            fix = self.fixture_builder(params=params, label_builder=self.fixture_label_builder)
             fix.assemble()
             yield fix
 
@@ -40,37 +39,6 @@ class Joint(JointMeta):
             solid_fix = SolidFixture(params=fix.params)
             solid_fix.assemble()
             yield solid_fix, analyze_scad(solid_fix.scad_object)
-
-    def build_fixture_labels(
-        self, fixture: "FixtureMeta", opposing_face: Optional[int] = None
-    ) -> Iterator["FixtureLabel"]:
-        src_label_params = FixtureLabelParams(
-            content=fixture.params.source_label,
-            depth=config.fixture_shell_thickness / 1.9,
-            center=True,
-            fixtures=self.fixtures,
-            target=fixture,
-            meshes=self.meshes,
-            opposing_face_idx=opposing_face,
-        )
-        label_obj = self.fixture_label_builder(params=src_label_params)
-        label_obj.assemble()
-        yield label_obj
-        for idx, content in enumerate([fixture.params.length_label, fixture.params.target_label]):
-            params = src_label_params.copy(update=dict(content=content, position=idx + 1))
-            _label_obj = self.fixture_label_builder(params=params)
-            _label_obj.assemble()
-            yield _label_obj
-        if opposing_face is None:
-            yield from self.build_fixture_labels(
-                fixture, opposing_face=label_obj.params.target_face.fidx
-            )
-
-    def build_labeled_fixtures(self) -> Iterator["FixtureMeta"]:
-        for fixture in self.fixtures:
-            for fix_label in self.build_fixture_labels(fixture):
-                fixture.scad_object -= fix_label.scad_object
-            yield fixture
 
     def build_core(self) -> "CoreMeta":
         core = self.core_builder(fixtures=self.fixtures, meshes=self.meshes)
@@ -119,7 +87,6 @@ class Joint(JointMeta):
         self.solid_fixtures: List["FixtureMeta"] = [f[0] for f in solid_fixture_meshes]
         self.meshes = {k.params.label: v for k, v in solid_fixture_meshes}
         self.core = self.build_core()
-        self.fixtures = list(self.build_labeled_fixtures())
         core_inspect_data = self.build_core_joint_mesh(self.solid_fixtures)
         self.core = self.build_core_label(core_inspect_data)
         scad_objects = [self.core.scad_object] + [f.scad_object for f in self.fixtures]
