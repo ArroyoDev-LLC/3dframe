@@ -193,19 +193,22 @@ class Fixture(FixtureMeta):
         )
         return base
 
-    def do_extrude(self, obj: OpenSCADObject):
-        hole = bosl2.cube(
+    def create_hole(self) -> OpenSCADObject:
+        return bosl2.cube(
             [config.fixture_hole_size, config.fixture_hole_size, self.params.extrusion_height + 1],
             anchor=bosl2.CENTER,
             _tags=self.params.hole_tag,
         )
+
+    def do_extrude(self, obj: OpenSCADObject):
+        hole = self.create_hole()
         obj.add(bosl2.attach(bosl2.CENTER)(hole))
         right_att = bosl2.attach(bosl2.RIGHT)
         left_att = bosl2.attach(bosl2.LEFT)
         for lbl_obj in self.build_labels():
             obj.add(right_att(lbl_obj.copy()))
             obj.add(left_att(lbl_obj.copy()))
-        diff_tags = " ".join([self.params.hole_tag, self.params.create_tag("labels")])
+        diff_tags = " ".join([self.params.hole_tag, self.params.labels_tag])
         return bosl2.diff(diff_tags, self.params.base_tag)(obj)
 
     def do_transform(self, obj: sp.core.object_base.OpenSCADObject):
@@ -219,3 +222,16 @@ class Fixture(FixtureMeta):
 class SolidFixture(Fixture):
     def do_extrude(self, obj: sp.core.object_base.OpenSCADObject):
         return obj
+
+
+@attr.s(auto_attribs=True)
+class FixtureLabelDebug(Fixture):
+    def do_extrude(self, obj: OpenSCADObject):
+        hole = self.create_hole()
+        obj.add(bosl2.attach(bosl2.CENTER)(hole))
+        right_att = bosl2.attach(bosl2.RIGHT)
+        left_att = bosl2.attach(bosl2.LEFT)
+        for lbl_obj in self.build_labels():
+            obj.add(right_att(lbl_obj.copy()))
+            obj.add(left_att(lbl_obj.copy()))
+        return bosl2.diff(self.params.hole_tag, self.params.base_tag)(obj)
