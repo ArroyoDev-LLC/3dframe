@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Dict, List, Type, Tuple, Iterator, Optional
 
 import attr
 import solid as sp
+from solid.core.object_base import OpenSCADObject
 
 from threedframe import utils
 
@@ -14,7 +15,7 @@ if TYPE_CHECKING:
 
 @attr.s(auto_attribs=True)
 class ScadMeta(abc.ABC):
-    scad_object: Optional[sp.OpenSCADObject] = None
+    scad_object: Optional[OpenSCADObject] = None
 
     @abc.abstractmethod
     def assemble(self):
@@ -26,15 +27,15 @@ class FixtureMeta(ScadMeta, abc.ABC):
     params: "FixtureParams" = ...
 
     @abc.abstractmethod
-    def create_base(self) -> sp.OpenSCADObject:
+    def create_base(self) -> OpenSCADObject:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def do_extrude(self, obj: sp.OpenSCADObject) -> sp.OpenSCADObject:
+    def do_extrude(self, obj: OpenSCADObject) -> OpenSCADObject:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def do_transform(self, obj: sp.OpenSCADObject) -> sp.OpenSCADObject:
+    def do_transform(self, obj: OpenSCADObject) -> OpenSCADObject:
         raise NotImplementedError
 
     def assemble(self):
@@ -63,13 +64,13 @@ class CoreMeta(ScadMeta, abc.ABC):
 class LabelMeta(ScadMeta, abc.ABC):
     params: "LabelParams" = ...
 
-    def create_base(self) -> sp.OpenSCADObject:
+    def create_base(self) -> OpenSCADObject:
         _params = self.params.dict()
         label = _params.pop("content")
         return utils.label_size(label, **_params)[0]
 
     @abc.abstractmethod
-    def do_transform(self, obj: sp.OpenSCADObject) -> sp.OpenSCADObject:
+    def do_transform(self, obj: OpenSCADObject) -> OpenSCADObject:
         raise NotImplementedError
 
     def assemble(self):
