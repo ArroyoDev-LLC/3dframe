@@ -143,6 +143,13 @@ RUN useradd \
   && pip install --no-cache-dir -f /wheels/ -r /wheels/requirements.txt \
   && rm -rf /wheels
 
+# Install needed fonts.
+RUN cd /usr/share/fonts/truetype \
+ && curl -o opensans.zip -L https://fonts.google.com/download?family=Open%20Sans \
+ && unzip -d opensans opensans.zip \
+ && rm opensans.zip \
+ && fc-cache -f -v
+
 
 WORKDIR /app/
 COPY . /app/
