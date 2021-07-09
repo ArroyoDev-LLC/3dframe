@@ -56,7 +56,7 @@ class _Config(BaseSettings):
 
     # Multipliers applied to support size.
     CORE_SIZE_MULTIPLIER: float = 2.03
-    FIXTURE_SHELL_THICKNESS_MULTIPLIER: float = 0.1712
+    FIXTURE_SHELL_THICKNESS_MULTIPLIER: float = 0.3424
     FIXTURE_LENGTH_MULTIPLIER: float = 2.1739
     LABEL_SIZE_MULTIPLIER: float = 0.408
     LABEL_WIDTH_MULTIPLIER: float = 0.95
