@@ -8,9 +8,12 @@ from pathlib import Path
 import typer
 from devtools import debug
 
+from threedframe.config import config  # noqa
+
+config.create_lib_dir()  # noqa
+
 import threedframe.utils
 from threedframe.scad import JointDirector, JointDirectorParams, ParallelJointDirector
-from threedframe.config import config
 from threedframe.scad.core import CoreDebugCubes
 from threedframe.scad.joint import (
     SolidFixture,
