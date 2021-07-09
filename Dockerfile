@@ -158,7 +158,7 @@ RUN pip install --no-cache-dir -e /app/ \
   && mkdir -p /app/renders \
   && chown -R threedframe: /app \
   && chmod -R u+rwx /app \
-  && mkdir -p /.local \
+  && mkdir -p /.local/share \
   && chown -R threedframe /.local \
   && chmod -R u+rwx /.local
 
