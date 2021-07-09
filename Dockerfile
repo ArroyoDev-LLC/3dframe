@@ -15,10 +15,11 @@ RUN curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-
     poetry config virtualenvs.create false
 
 WORKDIR /app/
-COPY . /app/
+COPY pyproject.toml poetry.lock /app/
 
 # Build wheel.
-RUN bash -c "poetry install && poetry build -f wheel && poetry export --without-hashes -o requirements.txt --dev"
+RUN bash -c "poetry export --without-hashes -o requirements.txt --dev && pip install -U pip && mkdir -p dist && pip wheel -w dist -r requirements.txt"
+
 
 WORKDIR /wheels
 RUN bash -c "cp /app/dist/* /wheels/ && cp /app/requirements.txt /wheels/ && rm -rf /app"
@@ -117,12 +118,16 @@ RUN git submodule update --init && \
 ### 3dframe App
 FROM pymesh AS app
 
-WORKDIR /app/
-COPY . /app/
+
+# Copy OpenSCAD & Blender binaries
+COPY --from=openscad /openscad /usr/local/bin/openscad
+COPY --from=blender /blender /usr/local/blender
+
+# Copy dependencies.
+COPY --from=build /wheels /wheels
+
 
 ENV UID 1000
-
-COPY --from=build /wheels /wheels
 
 # Container user.
 # Create User
@@ -136,13 +141,17 @@ RUN useradd \
   # Install dependencies from wheels
   && pip install --no-cache-dir -U pip \
   && pip install --no-cache-dir -f /wheels/ -r /wheels/requirements.txt \
-  && rm -rf /wheels \
-  && pip install --no-cache-dir -e /app/ \
-  && chown -R threedframe: /app
+  && rm -rf /wheels
 
-# Copy OpenSCAD & Blender binaries
-COPY --from=openscad /openscad /usr/local/bin/openscad
-COPY --from=blender /blender /usr/local/blender
+
+WORKDIR /app/
+COPY . /app/
+
+RUN pip install --no-cache-dir -e /app/ \
+  && mkdir -p /app/renders \
+  && chown -R threedframe: /app \
+  && chmod -R u+rwx /app
+
 
 USER threedframe
 ENTRYPOINT /bin/bash

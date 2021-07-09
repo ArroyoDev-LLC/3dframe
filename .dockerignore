@@ -23,6 +23,7 @@ data
 renders_old
 renders
 Dockerfile
+.local
 
 # Don't ignore
 !pyproject.toml
