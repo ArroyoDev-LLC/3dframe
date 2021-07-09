@@ -2,8 +2,8 @@
 
 from typing import Dict, Tuple, Optional
 
-from solid import OpenSCADObject
 from pydantic import BaseModel
+from solid.core.object_base import OpenSCADObject
 
 from threedframe.models.mesh import MeshData, analyze_scad
 from threedframe.models.model import ModelEdge, ModelVertex

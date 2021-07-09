@@ -4,8 +4,8 @@ import itertools
 from typing import List, Tuple, Optional
 from functools import cached_property
 
+import solid as sp
 import sympy as S
-from solid import OpenSCADObject, union
 from euclid3 import Point3, Vector3
 from pydantic import BaseModel
 from pydantic.fields import PrivateAttr
@@ -159,8 +159,8 @@ class MeshData(BaseModel):
         return self.calc_absolute_midpoint()
 
 
-def analyze_scad(obj: OpenSCADObject) -> "MeshData":
-    scad_obj = [("target", union()(obj), "stl")]
+def analyze_scad(obj: sp.core.object_base.OpenSCADObject) -> "MeshData":
+    scad_obj = [("target", sp.union()(obj), "stl")]
     with TemporaryScadWorkspace(scad_objs=scad_obj) as tmpdata:
         tmp_path, tmp_files = tmpdata
         data = meshutil.analyze_mesh(tmp_files[0][-1])
