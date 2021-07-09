@@ -33,7 +33,6 @@ recommonmark = { version = "^0.7.1", optional = true }
 sphinx_rtd_theme = { version = "^0.5.1", optional = true }
 # main
 rich = "^9.10.0"
-solidpython = "^1.0.4"
 numpy = "^1.19.5"
 watchdog = "^1.0.2"
 vg = "^1.9.0"
@@ -43,6 +42,8 @@ pydantic = "^1.8.1"
 loguru = "^0.5.3"
 typer = {version = "^0.3.2", extras = ["all"]}
 psutil = "^5.8.0"
+solidpython = {git = "https://github.com/jeff-dh/SolidPython.git", rev = "exp_solid"}
+ply = "^3.11"
 
 [tool.poetry.dev-dependencies]
 autoflake = "^1.4"
