@@ -1,6 +1,5 @@
-[submodule "threedframe/lib/MCAD"]
-	path = threedframe/lib/MCAD
-	url = https://github.com/openscad/MCAD.git
-[submodule "threedframe/lib/dotSCAD"]
-	path = threedframe/lib/dotSCAD
-	url = https://github.com/JustinSDK/dotSCAD.git
+[submodule "threedframe/lib/BOSL2"]
+	path = threedframe/lib/BOSL2
+	url = git@github.com:BradenM/BOSL2.git
+[submodule "./threedframe/lib/BOSL2"]
+	branch = fix/atext-font
