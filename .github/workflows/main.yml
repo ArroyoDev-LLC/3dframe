@@ -119,10 +119,15 @@ jobs:
                   readarray -t VERTS < <(xargs -n 6 <<<$VERT_RANGE | awk "{print \$${WORKER_NUM}}")
                   printf "Selected Vertices:\n"
                   declare -p VERTS
-                  echo "VERTS=${VERTS[*]}" >> $GITHUB_ENV
+                  declare -a VERT_FLAGS
+                  for v in "${VERTS[@]}"
+                  do
+                    VERT_FLAGS+="-v $v "
+                  done
+                  echo "VERTS=${VERT_FLAGS[*]}" >> $GITHUB_ENV
 
             - name: Build
-              run: docker run --user $(id -u) --rm --entrypoint /app/threedframe/cli.py -v $(pwd):/app/ ghcr.io/arroyodev-llc/threedframe:latest generate data/cybersticks.json -v ${{ join(env.VERTS, ' -v') }} --render --scale ${{ matrix.scale }}
+              run: docker run --user $(id -u) --rm --entrypoint /app/threedframe/cli.py -v $(pwd):/app/ ghcr.io/arroyodev-llc/threedframe:latest generate data/cybersticks.json ${{ join(env.VERTS, ' ') }} --render --scale ${{ matrix.scale }}
 
             - name: Upload Renders
               uses: actions/upload-artifact@v2
