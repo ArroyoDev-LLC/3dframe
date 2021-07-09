@@ -100,9 +100,8 @@ class JointCoreOnlyDebug(Joint):
 
 
 class JointLabelDebug(Joint):
-    def build_labeled_fixtures(self) -> Iterator["FixtureMeta"]:
-        for fixture in self.fixtures:
-            fixture.scad_object.set_modifier("#")
-            for fix_label in self.build_fixture_labels(fixture):
-                fixture.scad_object += fix_label.scad_object
-            yield fixture
+    def assemble(self):
+        super().assemble()
+        self.scad_object = sp.union()(*[~f.scad_object for f in self.fixtures])
+
+
