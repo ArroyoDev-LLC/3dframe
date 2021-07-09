@@ -113,7 +113,7 @@ class JointDirector:
 
     def write_joint(self, joint: "JointMeta"):
         out_path = self.get_joint_file_path(joint.vertex.vidx)
-        utils.write_scad(joint.scad_object, out_path, segments=config.SEGMENTS)
+        utils.write_scad(joint.scad_object, out_path, header=config.scad_header)
         if self.params.render:
             self.render_joint(out_path)
 
