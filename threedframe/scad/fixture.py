@@ -1,17 +1,23 @@
-from typing import Tuple
+from typing import TYPE_CHECKING, Type, Tuple
 
 import attr
 import solid as sp
 import sympy as S
-from solid import utils as sputils
+import solid.extensions.bosl2.std as bosl2
+import solid.extensions.legacy.utils as sputils
 from euclid3 import Point3 as EucPoint3
 from euclid3 import Vector3 as EucVector3
 from pydantic.main import BaseModel
+from solid.core.object_base import OpenSCADObject
 
 from threedframe.config import config
 from threedframe.models import ModelEdge, ModelVertex
 from threedframe.constant import Constants, PlanarConstants
+from threedframe.scad.label import FixtureLabel, FixtureLabelParams
 from threedframe.scad.interfaces import FixtureMeta
+
+if TYPE_CHECKING:
+    from threedframe.scad.interfaces import LabelMeta
 
 
 class FixtureParams(BaseModel):
@@ -123,18 +129,86 @@ class FixtureParams(BaseModel):
             )
         )
 
+    def create_tag(self, name: str) -> str:
+        """Create BOSL2 tag name.
+
+        Args:
+            name: name of fixture tag.
+
+        Returns:
+            Tag with name unique to fixture.
+
+        """
+        return f"fixture_{self.source_label}-{self.target_label}_{name}"
+
+    @property
+    def base_tag(self) -> str:
+        return self.create_tag("base")
+
+    @property
+    def hole_tag(self) -> str:
+        return self.create_tag("hole")
+
+    @property
+    def labels_tag(self) -> str:
+        return self.create_tag("labels")
+
 
 @attr.s(auto_attribs=True)
 class Fixture(FixtureMeta):
-    def create_base(self) -> sp.OpenSCADObject:
-        return sp.square(config.fixture_size + config.fixture_shell_thickness, center=True)
+    label_builder: Type["LabelMeta"] = FixtureLabel
 
-    def do_extrude(self, obj: sp.OpenSCADObject):
-        obj -= sp.resize(tuple([config.fixture_hole_size] * 3))(obj.copy())
-        obj = sp.linear_extrude(self.params.extrusion_height)(obj)
-        return obj
+    def create_label(self, content: str) -> OpenSCADObject:
+        params = FixtureLabelParams(content=content, target=self)
+        label = self.label_builder(params=params)
+        label.assemble()
+        return label.scad_object
 
-    def do_transform(self, obj: sp.OpenSCADObject):
+    @property
+    def source_label_obj(self) -> OpenSCADObject:
+        return bosl2.fwd(self.params.extrusion_height / 3)(
+            self.create_label(self.params.source_label)
+        )
+
+    @property
+    def target_label_obj(self) -> OpenSCADObject:
+        return bosl2.back(self.params.extrusion_height / 3)(
+            self.create_label(self.params.target_label)
+        )
+
+    @property
+    def length_label_obj(self) -> OpenSCADObject:
+        return self.create_label(self.params.adjusted_edge_length_as_label)
+
+    def build_labels(self):
+        yield self.source_label_obj
+        yield self.target_label_obj
+        yield self.length_label_obj
+
+    def create_base(self) -> OpenSCADObject:
+        base: OpenSCADObject = bosl2.cube(
+            [config.fixture_size, config.fixture_size, self.params.extrusion_height],
+            anchor=bosl2.BOTTOM,
+            _tags=self.params.base_tag,
+        )
+        return base
+
+    def do_extrude(self, obj: OpenSCADObject):
+        hole = bosl2.cube(
+            [config.fixture_hole_size, config.fixture_hole_size, self.params.extrusion_height + 1],
+            anchor=bosl2.CENTER,
+            _tags=self.params.hole_tag,
+        )
+        obj.add(bosl2.attach(bosl2.CENTER)(hole))
+        right_att = bosl2.attach(bosl2.RIGHT)
+        left_att = bosl2.attach(bosl2.LEFT)
+        for lbl_obj in self.build_labels():
+            obj.add(right_att(lbl_obj.copy()))
+            obj.add(left_att(lbl_obj.copy()))
+        diff_tags = " ".join([self.params.hole_tag, self.params.create_tag("labels")])
+        return bosl2.diff(diff_tags, self.params.base_tag)(obj)
+
+    def do_transform(self, obj: sp.core.object_base.OpenSCADObject):
         obj = sputils.transform_to_point(
             obj, dest_point=self.params.midpoint, dest_normal=self.params.vector_from_origin
         )
@@ -143,6 +217,5 @@ class Fixture(FixtureMeta):
 
 @attr.s(auto_attribs=True)
 class SolidFixture(Fixture):
-    def do_extrude(self, obj: sp.OpenSCADObject):
-        obj = sp.linear_extrude(self.params.extrusion_height)(obj)
+    def do_extrude(self, obj: sp.core.object_base.OpenSCADObject):
         return obj
