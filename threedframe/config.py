@@ -4,6 +4,7 @@ import shutil
 from pathlib import Path
 
 from pydantic import BaseSettings, validator
+from solid.config import config as SolidConfig
 
 from threedframe.constant import Constants
 
@@ -15,6 +16,7 @@ ROOT = Path(__file__).parent
 class _Config(BaseSettings):
     # General Config.
     RENDERS_DIR: Path = Path("renders")
+    CI: bool = False
 
     @validator("RENDERS_DIR")
     def validate_renders_dir(cls, v: Path) -> Path:
@@ -32,6 +34,13 @@ class _Config(BaseSettings):
 
     def create_log_format(self, fmt: str):
         return self.LOG_BASE_FMT + fmt + " - <level>{message}</level>"
+
+    def setup_solid(self):
+        self.create_lib_dir()
+        SolidConfig.enable_pickle_cache = not self.CI
+
+    def set_solid_caching(self, enabled: bool = True):
+        SolidConfig.enable_pickle_cache = enabled
 
     def create_lib_dir(self):
         """Create library directory.

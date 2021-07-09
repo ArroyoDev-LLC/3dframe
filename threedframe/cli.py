@@ -10,7 +10,7 @@ from devtools import debug
 
 from threedframe.config import config  # noqa
 
-config.create_lib_dir()  # noqa
+config.setup_solid()  # noqa
 
 import threedframe.utils
 from threedframe.scad import JointDirector, JointDirectorParams, ParallelJointDirector
