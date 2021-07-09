@@ -12,8 +12,14 @@ import threedframe.utils
 from threedframe.scad import JointDirector, JointDirectorParams, ParallelJointDirector
 from threedframe.config import config
 from threedframe.scad.core import CoreDebugCubes
-from threedframe.scad.joint import SolidFixture, JointLabelDebug, JointCoreOnlyDebug
+from threedframe.scad.joint import (
+    SolidFixture,
+    JointLabelDebug,
+    JointCoreOnlyDebug,
+    JointSingleFixtureDebug,
+)
 from threedframe.scad.label import FixtureLabelDebugArrows
+from threedframe.scad.fixture import FixtureLabelDebug
 
 
 class BuildStrategy(str, Enum):
@@ -21,6 +27,7 @@ class BuildStrategy(str, Enum):
     CORE_VERTICES = "debugCoreVertices"
     FIXTURE_LABELS = "debugFixLabels"
     FIXTURE_LABELS_ARROWS = "debugFixLabelsArrows"
+    SINGLE_FIXTURE = "debugSingleFixture"
     PARALLEL = "parallel"
 
     @property
@@ -33,11 +40,13 @@ class BuildStrategy(str, Enum):
             },
             BuildStrategy.FIXTURE_LABELS: {
                 "joint_builder": JointLabelDebug,
+                "fixture_builder": FixtureLabelDebug,
             },
             BuildStrategy.FIXTURE_LABELS_ARROWS: {
                 "joint_builder": JointLabelDebug,
                 "fixture_label_builder": FixtureLabelDebugArrows,
             },
+            BuildStrategy.SINGLE_FIXTURE: {"joint_builder": JointSingleFixtureDebug},
             BuildStrategy.PARALLEL: {"director": ParallelJointDirector},
         }
 
