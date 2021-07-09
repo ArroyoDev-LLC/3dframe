@@ -119,7 +119,7 @@ jobs:
                   readarray -t VERTS < <(xargs -n 6 <<<$VERT_RANGE | awk "{print \$${WORKER_NUM}}")
                   printf "Selected Vertices:\n"
                   declare -p VERTS
-                  echo "VERTS=${VERTS}" >> $GITHUB_ENV
+                  echo "VERTS=${VERTS[*]}" >> $GITHUB_ENV
 
             - name: Build
               run: docker run --user $(id -u) --rm --entrypoint /app/threedframe/cli.py -v $(pwd):/app/ ghcr.io/arroyodev-llc/threedframe:latest generate data/cybersticks.json -v ${{ join(env.VERTS, ' -v') }} --render --scale ${{ matrix.scale }}
