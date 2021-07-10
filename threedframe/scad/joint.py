@@ -89,6 +89,12 @@ class Joint(JointMeta):
         self.core = self.build_core()
         core_inspect_data = self.build_core_joint_mesh(self.solid_fixtures)
         self.core = self.build_core_label(core_inspect_data)
+        for fixture in self.fixtures:
+            other_solids = [
+                s for s in self.solid_fixtures if s.params.label != fixture.params.label
+            ]
+            for solid_fix in other_solids:
+                fixture.scad_object -= solid_fix.scad_object
         scad_objects = [self.core.scad_object] + [f.scad_object for f in self.fixtures]
         self.scad_object = sp.union()(*scad_objects)
 
