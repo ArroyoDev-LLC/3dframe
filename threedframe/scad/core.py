@@ -1,8 +1,9 @@
-from typing import TYPE_CHECKING, List, Tuple, Union, Iterator
+from typing import TYPE_CHECKING, List, Tuple, Iterator
 
 import attr
 import solid as sp
 import sympy as S
+import solid.extensions.bosl2.std as bosl2
 import solid.extensions.legacy.utils as sputils
 from solid.core.object_base import OpenSCADObject
 
@@ -31,13 +32,13 @@ class Core(CoreMeta):
         face: "MeshFace",
         face_midpoint: S.Point,
         vertex: S.Point,
-        *,
-        color: Union[str, Tuple[int, ...]] = "red",
     ) -> OpenSCADObject:
         # First face is nearest to origin.
         face_norm = face.normal
-        cube_color = sp.color(color) if isinstance(color, str) else sp.color(c=color)
-        cube_obj = cube_color(sp.cube(1, center=True))
+        cube_obj = bosl2.cuboid(
+            [2] * 3, anchor=bosl2.CENTER, chamfer=1, _tags="core_pt", trimcorners=False
+        )
+
         # Scale corner point with reference to midpoint to 'inset' cubes into corners
         scaled_point = vertex.scale(0.9575, 0.9575, 0.9575, pt=face_midpoint)
         cube_obj = sputils.transform_to_point(
@@ -55,7 +56,7 @@ class Core(CoreMeta):
         vertices = [v.as_sympy for v in face.vertices]
         face_midpoint, all_vertices = self.find_inner_face_midpoint(vertices)
         for vertex in all_vertices:
-            yield self.create_vertex_cube(face, face_midpoint, vertex, **kwargs)
+            yield self.create_vertex_cube(face, face_midpoint, vertex)
 
     def create_hull_cubes(self) -> Iterator[OpenSCADObject]:
         color_gen = utils.rand_color_generator()
@@ -69,14 +70,15 @@ class CoreDebugCubes(Core):
         fixture: "FixtureMeta",
         **kwargs,
     ) -> Iterator[OpenSCADObject]:
+        yield from super().create_fixture_inner_vertex_cubes(fixture, **kwargs)
         solid_mesh = self.meshes[fixture.params.label]
         face = solid_mesh.faces[0]
         vertices = [v.as_sympy for v in face.vertices]
-        face_midpoint, all_vertices = self.find_inner_face_midpoint(vertices)
-        for vertex in all_vertices:
-            yield self.create_vertex_cube(face, face_midpoint, vertex, **kwargs)
+        face_midpoint, _ = self.find_inner_face_midpoint(vertices)
         yield sputils.transform_to_point(
-            sp.cube(1, center=True), dest_point=tuple(face_midpoint), dest_normal=face.normal
+            bosl2.cube([1] * 3, anchor=bosl2.CENTER, _tags="core_pt"),
+            dest_point=tuple(face_midpoint),
+            dest_normal=face.normal,
         )
 
     def assemble(self):
