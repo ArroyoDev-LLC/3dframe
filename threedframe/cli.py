@@ -96,12 +96,17 @@ def generate(
     dump_config: Optional[bool] = typer.Option(
         False, "-d", "--dump-config", help="Dump generated config.", is_flag=True
     ),
+    no_cache: Optional[bool] = typer.Option(
+        False, "--no-cache", help="Disable caching.", is_flag=True
+    ),
 ):
     """Generate joint model from given vertices."""
     if not vertices:
         typer.confirm("Are you sure you want to render ALL vertices?", abort=True)
         vertices = None  # indicates all in director params.
     config.SUPPORT_SCALE = scale
+    if no_cache:
+        config.set_solid_caching(False)
     params = JointDirectorParams(
         model=model_path, vertices=vertices, render=render, render_file_type=render_format
     )
