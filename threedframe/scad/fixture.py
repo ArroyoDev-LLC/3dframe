@@ -42,6 +42,8 @@ class FixtureParams(BaseModel):
 
     @property
     def extrusion_height(self) -> float:
+        if self.adjusted_edge_length <= config.fixture_length:
+            return self.adjusted_edge_length / 2
         return config.fixture_length
 
     @property
@@ -71,7 +73,7 @@ class FixtureParams(BaseModel):
         fixture, NOT between the source point and origin.
 
         """
-        generic_coord = self.extrusion_height / 3
+        generic_coord = config.fixture_length / 3
         generic_midpoint = EucPoint3(generic_coord, generic_coord, generic_coord)
         return generic_midpoint * self.direction_to_origin
 
@@ -220,6 +222,12 @@ class Fixture(FixtureMeta):
 
 @attr.s(auto_attribs=True)
 class SolidFixture(Fixture):
+    def create_base(self) -> OpenSCADObject:
+        obj = super().create_base()
+        solid_tags = self.params.base_tag + " fixture_solid"
+        obj.params.update(_tags=solid_tags)
+        return obj
+
     def do_extrude(self, obj: sp.core.object_base.OpenSCADObject):
         return obj
 
