@@ -168,7 +168,7 @@ class Fixture(FixtureMeta):
 
     @property
     def source_label_obj(self) -> OpenSCADObject:
-        return bosl2.fwd(self.params.extrusion_height / 3)(
+        return bosl2.fwd(self.params.extrusion_height / 4)(
             self.create_label(self.params.source_label)
         )
 
@@ -180,12 +180,25 @@ class Fixture(FixtureMeta):
 
     @property
     def length_label_obj(self) -> OpenSCADObject:
-        return self.create_label(self.params.adjusted_edge_length_as_label)
+        return bosl2.back(0.5)(self.create_label(self.params.adjusted_edge_length_as_label))
 
     def build_labels(self):
         yield self.source_label_obj
         yield self.target_label_obj
         yield self.length_label_obj
+
+    def create_hole(self) -> OpenSCADObject:
+        return bosl2.cube(
+            [config.fixture_hole_size, config.fixture_hole_size, self.params.extrusion_height + 1],
+            anchor=bosl2.CENTER,
+            _tags=self.params.hole_tag,
+        )
+
+    def create_fillet(self, **kwargs) -> OpenSCADObject:
+        fillet: OpenSCADObject = bosl2.interior_fillet(
+            l=config.fixture_size, r=config.fixture_size / 4.5, _tags="fix_fillet", **kwargs
+        )
+        return fillet
 
     def create_base(self) -> OpenSCADObject:
         base: OpenSCADObject = bosl2.cube(
@@ -195,21 +208,26 @@ class Fixture(FixtureMeta):
         )
         return base
 
-    def create_hole(self) -> OpenSCADObject:
-        return bosl2.cube(
-            [config.fixture_hole_size, config.fixture_hole_size, self.params.extrusion_height + 1],
-            anchor=bosl2.CENTER,
-            _tags=self.params.hole_tag,
-        )
+    def add_fillets(self, obj: OpenSCADObject) -> OpenSCADObject:
+        y_fillet = self.create_fillet(spin=180, orient=bosl2.RIGHT)
+        x_fillet = self.create_fillet(orient=bosl2.FRONT)
+        obj.add(bosl2.yflip_copy()(bosl2.position([0, -1, -1])(y_fillet)))
+        obj.add(bosl2.xflip_copy()(bosl2.position([1, 0, -1])(x_fillet)))
+        return obj
 
-    def do_extrude(self, obj: OpenSCADObject):
-        hole = self.create_hole()
-        obj.add(bosl2.attach(bosl2.CENTER)(hole))
+    def add_labels(self, obj: OpenSCADObject) -> OpenSCADObject:
         right_att = bosl2.attach(bosl2.RIGHT)
         left_att = bosl2.attach(bosl2.LEFT)
         for lbl_obj in self.build_labels():
             obj.add(right_att(lbl_obj.copy()))
             obj.add(left_att(lbl_obj.copy()))
+        return obj
+
+    def do_extrude(self, obj: OpenSCADObject):
+        hole = self.create_hole()
+        obj.add(bosl2.attach(bosl2.CENTER)(hole))
+        obj = self.add_fillets(obj)
+        obj = self.add_labels(obj)
         diff_tags = " ".join([self.params.hole_tag, self.params.labels_tag])
         return bosl2.diff(diff_tags, self.params.base_tag)(obj)
 
