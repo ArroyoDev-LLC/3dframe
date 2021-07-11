@@ -117,4 +117,6 @@ class JointSingleFixtureDebug(JointLabelDebug):
 
     def assemble(self):
         self.fixtures = list(self.build_fixtures())
-        self.scad_object = self.fixtures[0].scad_object
+        trans_fix = list(self.build_fixtures())[0]
+        trans_fix_scad = trans_fix.do_transform(trans_fix.scad_object)
+        self.scad_object = ~self.fixtures[0].scad_object + trans_fix_scad
