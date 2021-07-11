@@ -87,8 +87,6 @@ class Joint(JointMeta):
         self.solid_fixtures: List["FixtureMeta"] = [f[0] for f in solid_fixture_meshes]
         self.meshes = {k.params.label: v for k, v in solid_fixture_meshes}
         self.core = self.build_core()
-        core_inspect_data = self.build_core_joint_mesh(self.solid_fixtures)
-        self.core = self.build_core_label(core_inspect_data)
         for fixture in self.fixtures:
             other_solids = [
                 s for s in self.solid_fixtures if s.params.label != fixture.params.label
