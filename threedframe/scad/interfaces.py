@@ -2,7 +2,6 @@ import abc
 from typing import TYPE_CHECKING, Dict, List, Type, Tuple, Iterator, Optional
 
 import attr
-import solid.extensions.bosl2.std as bosl2
 from solid.core.object_base import OpenSCADObject
 
 from threedframe import utils
@@ -51,13 +50,8 @@ class CoreMeta(ScadMeta, abc.ABC):
     meshes: Dict[str, "MeshData"] = ...
 
     @abc.abstractmethod
-    def create_hull_cubes(self):
-        raise NotImplementedError
-
     def assemble(self):
-        fixture_vertex_cubes = list(self.create_hull_cubes())
-        obj: OpenSCADObject = bosl2.hulling("core_pt")(*fixture_vertex_cubes)
-        self.scad_object = obj
+        raise NotImplementedError
 
 
 @attr.s(auto_attribs=True)
