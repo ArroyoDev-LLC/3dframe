@@ -14,13 +14,7 @@ config.setup_solid()  # noqa
 
 import threedframe.utils
 from threedframe.scad import JointDirector, JointDirectorParams, ParallelJointDirector
-from threedframe.scad.core import CoreDebugCubes
-from threedframe.scad.joint import (
-    SolidFixture,
-    JointLabelDebug,
-    JointCoreOnlyDebug,
-    JointSingleFixtureDebug,
-)
+from threedframe.scad.joint import JointLabelDebug, JointCoreOnlyDebug, JointSingleFixtureDebug
 from threedframe.scad.label import FixtureLabelDebugArrows
 from threedframe.scad.fixture import FixtureLabelDebug
 
@@ -37,10 +31,6 @@ class BuildStrategy(str, Enum):
     def _builders(self):
         return {
             BuildStrategy.CORE_ONLY: {"joint_builder": JointCoreOnlyDebug},
-            BuildStrategy.CORE_VERTICES: {
-                "fixture_builder": SolidFixture,
-                "core_builder": CoreDebugCubes,
-            },
             BuildStrategy.FIXTURE_LABELS: {
                 "joint_builder": JointLabelDebug,
                 "fixture_builder": FixtureLabelDebug,
