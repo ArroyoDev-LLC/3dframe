@@ -67,15 +67,22 @@ class FixtureParams(BaseModel):
 
     @property
     def midpoint(self) -> EucPoint3:
-        """Fixture midpoint.
+        """Fixture origin-facing face midpoint.
 
         This is the midpoint of the "end result"
         fixture, NOT between the source point and origin.
+
+        Midpoint of the face closest to origin.
 
         """
         generic_coord = config.fixture_length / 3
         generic_midpoint = EucPoint3(generic_coord, generic_coord, generic_coord)
         return generic_midpoint * self.direction_to_origin
+
+    @property
+    def target_face_midpoint(self) -> EucPoint3:
+        coord = EucPoint3(*[self.extrusion_height] * 3) * self.direction_to_origin
+        return coord + self.midpoint
 
     @property
     def midpoint_as_sympy(self) -> S.Point:
