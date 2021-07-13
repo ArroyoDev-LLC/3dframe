@@ -103,7 +103,9 @@ class FixtureParams(BaseModel):
     @property
     def adjusted_edge_length(self) -> float:
         """Final length of physical edge that accommodates core+fixture material."""
-        return self.source_edge.length - self.edge_length_from_fixture
+        # count for source+target diff
+        edge_diff = self.edge_length_from_fixture * 2
+        return self.source_edge.length - edge_diff
 
     @property
     def adjusted_edge_length_as_label(self) -> str:
