@@ -70,13 +70,13 @@ class FixtureLabel(LabelMeta):
             self.params.content,
             size=self.params.size,
             anchor=bosl2.CENTER,
-            h=1.5,
+            h=1.5 / 2,
             font="OpenSans:style=ExtraBold",
             _tags=self.params.tag,
         )
 
     def do_transform(self, obj: OpenSCADObject) -> OpenSCADObject:
-        res = sp.resize(self.params.width, 0, 1.5)
+        res = sp.resize(self.params.width, 0, 1.5 / 2)
         return res(obj)
 
 
