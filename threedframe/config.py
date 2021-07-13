@@ -5,6 +5,7 @@ from pathlib import Path
 
 from pydantic import BaseSettings, validator
 from solid.config import config as SolidConfig
+from solid.extensions.scad_interface import ScadInterface
 
 from threedframe.constant import Constants
 
@@ -27,7 +28,7 @@ class _Config(BaseSettings):
     LOG_BASE_FMT: str = "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan>"
 
     # OpenSCAD Poly Segments.
-    SEGMENTS: int = 48
+    SEGMENTS: int = 24
     # OpenSCAD Libraries.
     LIB_DIR: Path = ROOT / "lib"
     SCAD_LIB_DIR: Path = ROOT.parent / ".local/share/OpenSCAD/libraries"
@@ -57,6 +58,13 @@ class _Config(BaseSettings):
         self.create_lib_dir()
         tmpl = "$fn = {c.SEGMENTS};\ninclude <BOSL2/std.scad>\n"
         return tmpl.format(c=self)
+
+    @property
+    def scad_interface(self) -> ScadInterface:
+        scad_int = ScadInterface()
+        scad_int.additional_header_code(self.scad_header)
+        scad_int.set_global_var("$preview", "false")
+        return scad_int
 
     GAP: float = 0.02  # 3dPrinting fudge factor.
 
