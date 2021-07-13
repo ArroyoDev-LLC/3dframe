@@ -42,9 +42,12 @@ class FixtureParams(BaseModel):
 
     @property
     def extrusion_height(self) -> float:
-        if self.adjusted_edge_length <= config.fixture_length:
-            return self.adjusted_edge_length / 2
-        return config.fixture_length
+        face_to_face_fixture_length = config.fixture_length * 2
+        if self.adjusted_edge_length > face_to_face_fixture_length:
+            return config.fixture_length
+        # extrude to max available height w/
+        # a 3mm buffer between source+target fixture.
+        return (self.adjusted_edge_length / 2) - 1.5
 
     @property
     def distance_to_origin(self) -> S.Mul:
