@@ -42,7 +42,7 @@ class JointDirectorParams(BaseModel):
     core_builder: Optional[Type["CoreMeta"]] = None
     core_label_builder: Optional[Type["LabelMeta"]] = None
 
-    vertices: Optional[Sequence[int]] = None
+    vertices: Optional[Sequence[Union[int, str]]] = None
     render: bool = False
     render_file_type: Optional[RenderFileType] = RenderFileType.STL
     model: Union[Path, "ModelData"]
@@ -65,15 +65,21 @@ class JointDirectorParams(BaseModel):
             _vertices[vidx] = vertex.copy(update=dict(edges=edges))
         return model.copy(update=dict(vertices=_vertices))
 
-    @validator("model")
+    @validator("model", always=True)
     def validate_model_data(cls, v: Union[Path, "ModelData"], values: Dict[str, Any]) -> ModelData:
         if isinstance(v, Path):
             v: ModelData = parse_file_as(ModelData, v)
         verts = values["vertices"]
         resolve_verts = v.vertices
         if verts is not None:
+            _verts = []
+            for vl in verts:
+                if not str(vl).isnumeric():
+                    _verts.append(v.get_vidx_by_label(vl))
+                else:
+                    _verts.append(int(vl))
             # scoped vertices down to requested by params.
-            resolve_verts = {k: v for k, v in v.vertices.items() if k in verts}
+            resolve_verts = {k: v for k, v in v.vertices.items() if k in _verts}
         v = cls._resolve_edge_relations(v, resolve_verts)
         return v
 
