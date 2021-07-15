@@ -98,6 +98,14 @@ class JointMeta(ScadMeta, abc.ABC):
 
     vertex: "ModelVertex" = ...
 
+    @property
+    def name(self) -> str:
+        return f"Joint[{self.vertex.label}]"
+
+    @property
+    def file_name(self) -> str:
+        return f"joint-v{self.vertex.label}"
+
     @abc.abstractmethod
     def build_fixture_params(self) -> Iterator["FixtureParams"]:
         raise NotImplementedError
