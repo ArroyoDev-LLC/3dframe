@@ -36,6 +36,14 @@ class ScadMeta(abc.ABC):
 class FixtureMeta(ScadMeta, abc.ABC):
     params: "FixtureParams" = ...
 
+    @property
+    def name(self) -> str:
+        return f"{self.params.source_label}@{self.params.target_label}"
+
+    @property
+    def file_name(self) -> str:
+        return "-".join([self.params.source_label, self.params.target_label])
+
     @abc.abstractmethod
     def create_base(self) -> OpenSCADObject:
         raise NotImplementedError
