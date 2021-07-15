@@ -18,5 +18,4 @@ def test_fixture_length_less_than_support_length(
         print(
             f"{params.source_label} [@ {params.adjusted_edge_length}] -> {params.target_label} => EH: {params.extrusion_height}"
         )
-        # assert params.extrusion_height == approx(config.fixture_length)
         assert params.extrusion_height * 2 < params.adjusted_edge_length
