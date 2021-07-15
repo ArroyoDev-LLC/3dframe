@@ -1,3 +1,4 @@
+import math
 from typing import TYPE_CHECKING, Type, Tuple
 
 import attr
@@ -5,6 +6,7 @@ import solid as sp
 import sympy as S
 import solid.extensions.bosl2.std as bosl2
 import solid.extensions.legacy.utils as sputils
+from loguru import logger
 from euclid3 import Point3 as EucPoint3
 from euclid3 import Vector3 as EucVector3
 from pydantic.main import BaseModel
@@ -41,13 +43,31 @@ class FixtureParams(BaseModel):
         return self.source_edge.target_vertex
 
     @property
+    def max_avail_extrusion_height(self) -> float:
+        """Max available extrusion height.
+
+        This is the theoretical 'longest'
+        a fixture can be given the length of its edge.
+
+        On a singular edge/support, two fixtures
+        at this height would be touching.
+
+        """
+        return self.adjusted_edge_length / 2
+
+    @property
     def extrusion_height(self) -> float:
-        face_to_face_fixture_length = config.fixture_length * 2
-        if self.adjusted_edge_length > face_to_face_fixture_length:
-            return config.fixture_length
-        # extrude to max available height w/
-        # a 3mm buffer between source+target fixture.
-        return (self.adjusted_edge_length / 2) - 1.5
+        if config.fixture_length > self.max_avail_extrusion_height:
+            # extrude to max available height w/
+            # a 3mm buffer between source+target fixture.
+            logger.warning(
+                "[{}@{}] reduced height to: {}",
+                self.source_label,
+                self.target_label,
+                self.max_avail_extrusion_height - 1.5,
+            )
+            return self.max_avail_extrusion_height - 1.5
+        return config.fixture_length
 
     @property
     def distance_to_origin(self) -> S.Mul:
