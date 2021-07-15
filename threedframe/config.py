@@ -31,7 +31,7 @@ class _Config(BaseSettings):
     SEGMENTS: int = 48
     # OpenSCAD Libraries.
     LIB_DIR: Path = ROOT / "lib"
-    SCAD_LIB_DIR: Path = ROOT.parent / ".local/share/OpenSCAD/libraries"
+    SCAD_LIB_DIR: Path = Path.home() / ".local/share/OpenSCAD/libraries"
 
     def create_log_format(self, fmt: str):
         return self.LOG_BASE_FMT + fmt + " - <level>{message}</level>"
