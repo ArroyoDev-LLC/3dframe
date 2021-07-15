@@ -210,15 +210,11 @@ class Fixture(FixtureMeta):
 
     @property
     def source_label_obj(self) -> OpenSCADObject:
-        return bosl2.fwd(self.params.extrusion_height / 4)(
-            self.create_label(self.params.source_label)
-        )
+        return bosl2.fwd(self.extrusion_height / 4)(self.create_label(self.params.source_label))
 
     @property
     def target_label_obj(self) -> OpenSCADObject:
-        return bosl2.back(self.params.extrusion_height / 3)(
-            self.create_label(self.params.target_label)
-        )
+        return bosl2.back(self.extrusion_height / 3)(self.create_label(self.params.target_label))
 
     @property
     def length_label_obj(self) -> OpenSCADObject:
@@ -231,7 +227,7 @@ class Fixture(FixtureMeta):
 
     def create_hole(self) -> OpenSCADObject:
         return bosl2.cube(
-            [config.fixture_hole_size, config.fixture_hole_size, self.params.extrusion_height + 1],
+            [config.fixture_hole_size, config.fixture_hole_size, self.extrusion_height],
             anchor=bosl2.CENTER,
             _tags=self.params.hole_tag,
         )
