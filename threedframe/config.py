@@ -28,7 +28,7 @@ class _Config(BaseSettings):
     LOG_BASE_FMT: str = "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan>"
 
     # OpenSCAD Poly Segments.
-    SEGMENTS: int = 24
+    SEGMENTS: int = 48
     # OpenSCAD Libraries.
     LIB_DIR: Path = ROOT / "lib"
     SCAD_LIB_DIR: Path = ROOT.parent / ".local/share/OpenSCAD/libraries"
