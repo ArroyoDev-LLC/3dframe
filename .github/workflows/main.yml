@@ -107,7 +107,7 @@ jobs:
                   mkdir -p renders
                   WORKER_NUM="${{ matrix.worker }}"
                   ROOT=$(git rev-parse --show-toplevel)
-                  DATA_PATH="${ROOT}/data/cybersticks.json"
+                  DATA_PATH="${ROOT}/data/cybersticksv2.json"
                   # Grab vertex count.
                   _VERT_COUNT=$(cat "$DATA_PATH" | jq -r '.num_vertices')
                   #: 0 indexed
@@ -127,7 +127,7 @@ jobs:
                   echo "VERTS=${VERT_FLAGS[*]}" >> $GITHUB_ENV
 
             - name: Build
-              run: docker run --user root --rm --entrypoint /app/threedframe/cli.py -v $(pwd):/app/ ghcr.io/arroyodev-llc/threedframe:latest generate data/cybersticksv2.json ${{ join(env.VERTS, ' ') }} --render --scale ${{ matrix.scale }}
+              run: docker run --rm --entrypoint /app/threedframe/cli.py -v $(pwd):/app/ ghcr.io/arroyodev-llc/threedframe:latest generate data/cybersticksv2.json ${{ join(env.VERTS, ' ') }} --render --scale ${{ matrix.scale }}
 
             - name: Upload Renders
               uses: actions/upload-artifact@v2
