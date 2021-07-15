@@ -16,6 +16,17 @@ if TYPE_CHECKING:
 class ScadMeta(abc.ABC):
     scad_object: Optional[OpenSCADObject] = None
 
+    @property
+    @abc.abstractmethod
+    def name(self) -> str:
+        """Human friendly and per-joint unique name."""
+        raise NotImplementedError
+
+    @property
+    def file_name(self) -> str:
+        """Name of output file if rendered out."""
+        return self.name
+
     @abc.abstractmethod
     def assemble(self):
         raise NotImplementedError
