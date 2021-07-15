@@ -163,6 +163,5 @@ RUN pip install --no-cache-dir -e /app/ \
   && chmod -R a+rwx /app/.local
 
 
-USER threedframe
 ENTRYPOINT /bin/bash
 CMD ['3dframe']
