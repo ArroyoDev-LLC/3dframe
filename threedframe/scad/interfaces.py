@@ -144,7 +144,11 @@ class JointMeta(ScadMeta, abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def build_fixtures(self) -> Iterator[FixtureMeta]:
+    def construct_fixtures(self) -> Iterator[FixtureMeta]:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def build_fixtures(self) -> Type["JointMeta"]:
         raise NotImplementedError
 
     @abc.abstractmethod
