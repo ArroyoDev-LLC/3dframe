@@ -97,6 +97,11 @@ class JointDirector:
         )
         return _build_params
 
+    def create_joint(self, vertex: Union[int, "ModelVertex"]) -> "JointMeta":
+        """Create joint object to be assembled."""
+        vert = vertex if isinstance(vertex, ModelVertex) else self.params.model.vertices[vertex]
+        return self.params.joint_builder(vertex=vert, **self.builder_params)
+
     @logger.catch(reraise=True)
     def build_joint(self, vertex: "ModelVertex") -> Optional["JointMeta"]:
         scad_path = self.get_joint_file_path(vertex.vidx)
@@ -104,10 +109,7 @@ class JointDirector:
             logger.warning(f"Joint for vertex: {vertex.vidx} already exists, skipping to render...")
             return self.render_joint(scad_path)
         logger.info("Building joint for vertex: {}", vertex.vidx)
-        joint = self.params.joint_builder(
-            vertex=vertex,
-            **self.builder_params,
-        )
+        joint = self.create_joint(vertex=vertex)
         joint.assemble()
         self.write_joint(joint)
         return joint
