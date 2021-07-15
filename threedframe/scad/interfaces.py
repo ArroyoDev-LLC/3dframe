@@ -94,10 +94,10 @@ class LabelMeta(ScadMeta, abc.ABC):
 
 @attr.s(auto_attribs=True)
 class JointMeta(ScadMeta, abc.ABC):
-    meshes: Dict[str, "MeshData"] = attr.ib(init=False)
+    meshes: Dict[str, "MeshData"] = attr.ib(init=False, default={})
     core: "CoreMeta" = attr.ib(init=False)
-    fixtures: List["FixtureMeta"] = attr.ib(init=False)
-    solid_fixtures: List["FixtureMeta"] = attr.ib(init=False)
+    fixtures: List["FixtureMeta"] = attr.ib(init=False, default=[])
+    solid_fixtures: List["FixtureMeta"] = attr.ib(init=False, default=[])
 
     fixture_builder: Type["FixtureMeta"] = ...
     fixture_label_builder: Type["LabelMeta"] = ...
@@ -113,6 +113,18 @@ class JointMeta(ScadMeta, abc.ABC):
     @property
     def file_name(self) -> str:
         return f"joint-v{self.vertex.label}"
+
+    @property
+    def has_fixtures(self) -> bool:
+        return any(self.fixtures)
+
+    @property
+    def has_solid_fixtures(self) -> bool:
+        return any(self.solid_fixtures)
+
+    @property
+    def has_meshes(self) -> bool:
+        return any(self.meshes)
 
     @abc.abstractmethod
     def build_fixture_params(self) -> Iterator["FixtureParams"]:
