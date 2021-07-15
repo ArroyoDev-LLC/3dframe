@@ -2,11 +2,14 @@
 
 """Console script for 3DFrame."""
 from enum import Enum
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 from pathlib import Path
 
 import typer
+from rich import print
 from devtools import debug
+from rich.tree import Tree
+from rich.table import Table
 
 from threedframe.config import config  # noqa
 
@@ -17,6 +20,10 @@ from threedframe.scad import JointDirector, JointDirectorParams, ParallelJointDi
 from threedframe.scad.joint import JointLabelDebug, JointCoreOnlyDebug, JointSingleFixtureDebug
 from threedframe.scad.label import FixtureLabelDebugArrows
 from threedframe.scad.fixture import FixtureLabelDebug
+
+if TYPE_CHECKING:
+    from threedframe.scad.joint import Joint
+    from threedframe.scad.interfaces import FixtureMeta
 
 
 class BuildStrategy(str, Enum):
@@ -128,6 +135,88 @@ def generate(
     )
     director.assemble()
 
+
+@app.command()
+def inspect(
+    model_path=ModelPathArg,
+    vertex: str = typer.Argument(..., help="Vertex to inspect."),
+    scale: Optional[float] = ScaleArg,
+):
+    config.SUPPORT_SCALE = scale
+
+    def create_fixture_table(fixture: "FixtureMeta"):
+        tbl = Table("Ext. Height", "Cut Length", title=fixture.params.vidx_label)
+        tbl.add_row(
+            str(round(fixture.extrusion_height, 2)),
+            f"{fixture.params.adjusted_edge_length_as_label} ({round(fixture.params.adjusted_edge_length, 2)})",
+        )
+        return tbl
+
+    def create_fixture_target_table(root_fixture: "FixtureMeta", target: "FixtureMeta"):
+        grid = Table.grid()
+        grid.add_column()
+        grid.add_column()
+        grid.add_row(create_fixture_table(root_fixture), create_fixture_table(target))
+        return grid
+
+    tree = Tree(f"[bold green]Joint [white]{vertex}")
+    fixtures_tree = tree.add("Fixtures")
+
+    params = JointDirectorParams(model=model_path, vertices=(vertex,), render=False)
+    director = JointDirector(params=params)
+    target_vidx = params.model.get_vidx_by_label(vertex)
+    target_vidx = target_vidx if target_vidx is not None else vertex
+    joint = director.create_joint(vertex=target_vidx)
+    sibling_joints = set()
+    for fix_param in joint.build_fixture_params():
+        sibling_joints.add(fix_param.target_vertex.vidx)
+
+    new_verts = {*director.params.vertices} | sibling_joints
+    new_params = JointDirectorParams(model=model_path, vertices=list(new_verts), render=False)
+    director = JointDirector(params=new_params)
+    target_vertex = director.params.model.vertices[target_vidx]
+
+    joint_family = {}
+    for vert in director.params.model.vertices.values():
+        joint_family[vert.label] = director.create_joint(vertex=vert)
+        joint_family[vert.label].fixtures = list(joint_family[vert.label].construct_fixtures())
+
+    root_joint = joint_family[target_vertex.label]
+
+    for fixture in root_joint.fixtures:
+        fix_tree = fixtures_tree.add(label=f"[bold bright_white]{fixture.name}")
+        target_vert_label = fixture.params.target_label
+        target_joint = joint_family[target_vert_label]
+        target_fixture = next(
+            (
+                f
+                for f in target_joint.fixtures
+                if f.params.target_label == fixture.params.source_label
+            )
+        )
+        target_tree = fix_tree.add(
+            label=f"[bold bright_yellow]From {fixture.params.source_label} -> {fixture.params.target_label}"
+        )
+        target_tree.add(create_fixture_target_table(fixture, target_fixture))
+
+        siblings_tree = fix_tree.add(label=f"[bold bright_white]Fixture Siblings")
+        siblings = [f for f in root_joint.fixtures if f.name != fixture.name]
+        sib_grid = Table.grid()
+        sib_tables = []
+        for sib in siblings:
+            sib_grid.add_column()
+            sib_table = Table("Angle Bet.", title=sib.params.target_label)
+            angle_bet = round(sib.params.angle_between(fixture.params), 2)
+            angle_bet_r = str(angle_bet)
+            if angle_bet < 30:
+                angle_bet_r = f"[bold bright_red] :warning: {angle_bet_r}"
+            sib_table.add_row(angle_bet_r)
+            sib_tables.append(sib_table)
+        sib_grid.add_row(*sib_tables)
+        siblings_tree.add(sib_grid)
+
+    print()
+    print(tree)
 
 @app.command()
 def compute(model_path: Path = typer.Argument(..., exists=True, file_okay=True, dir_okay=False)):
