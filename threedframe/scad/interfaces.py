@@ -36,6 +36,19 @@ class ScadMeta(abc.ABC):
 class FixtureMeta(ScadMeta, abc.ABC):
     params: "FixtureParams" = ...
 
+    _extrusion_height: Optional[float] = attr.ib(None, init=False)
+
+    @property
+    def extrusion_height(self) -> float:
+        """Allow override of extrusion height."""
+        if self._extrusion_height:
+            return self._extrusion_height
+        return self.params.extrusion_height
+
+    @extrusion_height.setter
+    def extrusion_height(self, value: float):
+        self._extrusion_height = value
+
     @property
     def name(self) -> str:
         return f"{self.params.source_label}@{self.params.target_label}"
