@@ -122,7 +122,9 @@ jobs:
                   declare -a VERT_FLAGS
                   for v in "${VERTS[@]}"
                   do
-                    VERT_FLAGS+="-v $v "
+                    if [[ -n "${v// /}" ]]; then
+                        VERT_FLAGS+="-v $v "
+                    fi
                   done
                   echo "VERTS=${VERT_FLAGS[*]}" >> $GITHUB_ENV
 
