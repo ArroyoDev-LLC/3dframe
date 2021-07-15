@@ -28,11 +28,52 @@ class Joint(JointMeta):
             params = FixtureParams(source_edge=edge, source_vertex=self.vertex)
             yield params
 
-    def build_fixtures(self) -> Iterator["FixtureMeta"]:
-        for params in self.build_fixture_params():
-            fix = self.fixture_builder(params=params, label_builder=self.fixture_label_builder)
+    def get_sibling_fixtures(self, fixture: "FixtureMeta") -> List["FixtureMeta"]:
+        """Retrieve list of fixtures that are sibling to the given."""
+        if not self.has_fixtures:
+            raise RuntimeError("Fixtures have not been computed yet!")
+        return [f for f in self.fixtures if f.name != fixture.name]
+
+    def find_overlapping_fixtures(
+        self, source: "FixtureMeta", fixtures: List["FixtureMeta"]
+    ) -> Iterator["FixtureMeta"]:
+        """Locate and yield fixtures that overlap with `source.`"""
+        others = [f for f in fixtures if f.params.label != source.params.label]
+        for other in others:
+            angle_bet = source.params.angle_between(other.params)
+            logger.info(
+                "fixture angle between: [{}] <-> [{}] @ {}", source.name, other.name, angle_bet
+            )
+            if angle_bet <= 30:
+                logger.warning(
+                    "fixture [{}] overlaps with [{}] @ {} deg.", source.name, other.name, angle_bet
+                )
+                yield other
+
+    def construct_fixtures(self) -> Iterator["FixtureMeta"]:
+        params = self.build_fixture_params()
+        fixtures = [
+            self.fixture_builder(params=p, label_builder=self.fixture_label_builder) for p in params
+        ]
+        for fixture in fixtures:
+            overlaps = list(self.find_overlapping_fixtures(fixture, fixtures))
+            if any(overlaps):
+                siblings_by_height = sorted([fixture, *overlaps], key=lambda f: f.extrusion_height)
+                constraining_fixture = siblings_by_height[0]
+                logger.warning(
+                    "[{}] overlap adjustment made (height {} -> {})",
+                    fixture.name,
+                    fixture.extrusion_height,
+                    constraining_fixture.extrusion_height,
+                )
+                fixture.extrusion_height = constraining_fixture.extrusion_height
+            yield fixture
+
+    def build_fixtures(self) -> "Joint":
+        for fix in self.construct_fixtures():
             fix.assemble()
-            yield fix
+            self.fixtures.append(fix)
+        return self
 
     def build_fixture_meshes(self) -> Iterator[Tuple["FixtureMeta", "MeshData"]]:
         for fix in self.fixtures:
