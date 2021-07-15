@@ -218,6 +218,39 @@ def inspect(
     print()
     print(tree)
 
+
+@app.command()
+def analyze(model_path: Path = ModelPathArg, scale: Optional[float] = ScaleArg):
+    config.SUPPORT_SCALE = scale
+    params = JointDirectorParams(model=model_path)
+    director = JointDirector(params=params)
+
+    invalid_joints = Table(
+        "Joint",
+        "Source Fix.",
+        "Sibling Fix.",
+        "Angle Bet.",
+        title=f"[bold bright_red] :warning: Invalid Joints",
+    )
+
+    for vertex in director.params.model.vertices.values():
+        joint: "Joint" = director.create_joint(vertex=vertex)
+        joint.fixtures = list(joint.construct_fixtures())
+        for fixture in joint.fixtures:
+            siblings = joint.get_sibling_fixtures(fixture)
+            for sib in siblings:
+                angle_bet = round(sib.params.angle_between(fixture.params), 2)
+                if angle_bet < 30:
+                    invalid_joints.add_row(
+                        fixture.params.vidx_label,
+                        fixture.params.target_label,
+                        sib.params.target_label,
+                        str(angle_bet),
+                    )
+
+    print(invalid_joints)
+
+
 @app.command()
 def compute(model_path: Path = typer.Argument(..., exists=True, file_okay=True, dir_okay=False)):
     """Compute vertices/edge data from blender model."""
