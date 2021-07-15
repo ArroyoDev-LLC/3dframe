@@ -76,6 +76,20 @@ class ModelData(BaseModel):
         vertex = self.vertices[edge.target_vidx]
         return vertex
 
+    def get_vidx_by_label(self, label: str) -> Optional[int]:
+        """Resolve vertex index by label.
+
+        Args:
+            label: alpha label of vertex.
+
+        Returns:
+            Vertex index if found. None otherwise.
+
+        """
+        vert = next((v for v in self.vertices.values() if v.label.lower() == label.lower()), None)
+        if vert:
+            return vert.vidx
+
 
 ModelVertex.update_forward_refs()
 ModelEdge.update_forward_refs()
