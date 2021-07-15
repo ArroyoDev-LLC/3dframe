@@ -65,6 +65,10 @@ class FixtureLabelParams(LabelParams):
 class FixtureLabel(LabelMeta):
     params: FixtureLabelParams
 
+    @property
+    def name(self):
+        return f"Label[{self.params.target.name}]"
+
     def create_base(self) -> OpenSCADObject:
         return bosl2.atext(
             self.params.content,
@@ -83,6 +87,10 @@ class FixtureLabel(LabelMeta):
 @attr.s(auto_attribs=True, kw_only=True)
 class CoreLabel(LabelMeta):
     core_data: Dict[str, Any]
+
+    @property
+    def name(self):
+        return "CoreLabel"
 
     def get_optimal_face_midpoint(self) -> S.Point:
         face_verts = self.core_data["face_verts"]
