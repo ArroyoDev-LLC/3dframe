@@ -1,4 +1,3 @@
-import math
 from typing import TYPE_CHECKING, Type, Tuple
 
 import attr
@@ -144,6 +143,11 @@ class FixtureParams(BaseModel):
     @property
     def target_label(self) -> str:
         return self.target_vertex.label
+
+    @property
+    def vidx_label(self) -> str:
+        """Alpha vertex source label + source vertex index."""
+        return f"{self.source_label} ({self.source_vertex.vidx})"
 
     @property
     def length_label(self) -> str:
