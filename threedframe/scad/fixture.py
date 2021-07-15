@@ -1,3 +1,4 @@
+import math
 from typing import TYPE_CHECKING, Type, Tuple
 
 import attr
@@ -190,6 +191,11 @@ class FixtureParams(BaseModel):
     @property
     def labels_tag(self) -> str:
         return self.create_tag("labels")
+
+    def angle_between(self, other: "FixtureParams") -> float:
+        """Calculate angle between self and other fixture."""
+        angle_rad = self.direction_to_origin.angle(other.direction_to_origin)
+        return math.degrees(angle_rad)
 
 
 @attr.s(auto_attribs=True)
