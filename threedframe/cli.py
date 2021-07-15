@@ -63,18 +63,23 @@ def parse_vertices(vertices: List[str]):
             for pv in range(*rng):
                 _verts.append(int(pv))
         else:
-            _verts.append(int(v))
+            _verts.append(v)
     return _verts
+
+
+ModelPathArg: Path = typer.Argument(
+    ..., exists=True, file_okay=True, dir_okay=False, help="Path to data computed from model."
+)
+VerticesArg: Optional[List[str]] = typer.Option(
+    None, "-v", "--vertices", callback=parse_vertices, help="Vertices to render."
+)
+ScaleArg: Optional[float] = typer.Option(1.0, "-s", "--scale", help="Support size scale.")
 
 
 @app.command()
 def generate(
-    model_path: Path = typer.Argument(
-        ..., exists=True, file_okay=True, dir_okay=False, help="Path to data computed from model."
-    ),
-    vertices: Optional[List[str]] = typer.Option(
-        None, "-v", "--vertices", callback=parse_vertices, help="Vertices to render."
-    ),
+    model_path=ModelPathArg,
+    vertices: Optional[List[str]] = VerticesArg,
     build_mode: Optional[BuildStrategy] = typer.Option(
         None, "-b", "--build-mode", help="Optional debug mode to utilize."
     ),
@@ -82,7 +87,7 @@ def generate(
         False, "-r", "--render", help="Render mesh.", is_flag=True
     ),
     render_format: Optional[str] = typer.Option("stl", "-f", "--format", help="Render file type."),
-    scale: Optional[float] = typer.Option(1.0, "-s", "--scale", help="Support size scale."),
+    scale: Optional[float] = ScaleArg,
     dump_config: Optional[bool] = typer.Option(
         False, "-d", "--dump-config", help="Dump generated config.", is_flag=True
     ),
