@@ -353,8 +353,5 @@ class FixtureLabelDebug(Fixture):
 
 @attr.s(auto_attribs=True)
 class FixtureSimpleDebug(Fixture):
-    def add_labels(self, obj: OpenSCADObject) -> OpenSCADObject:
-        return obj
-
     def add_fillets(self, obj: OpenSCADObject) -> OpenSCADObject:
         return obj
