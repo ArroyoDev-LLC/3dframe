@@ -226,7 +226,7 @@ class Fixture(FixtureMeta):
         b: EucPoint3 = self.params.midpoint.copy()
         # b is maximum distance away fixture could be.
         b.set_length(self.params.max_avail_extrusion_height)
-        v = (dist * ((a - b).normalized())) + a
+        v = a + (dist * (b - a).normalized())
         return EucPoint3(*v.as_arr())
 
     def distance_to(self, other: "Fixture", at: Optional[float] = None) -> float:
