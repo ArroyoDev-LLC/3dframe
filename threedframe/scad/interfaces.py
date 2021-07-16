@@ -83,6 +83,11 @@ class FixtureMeta(ScadMeta, abc.ABC):
         return self.point_at_distance(self.extrusion_height - self.hole_length)
 
     @property
+    def target_face_endpoint(self) -> EucPoint3:
+        """Actual point at the tip of the fixture."""
+        return self.point_at_distance(self.extrusion_height)
+
+    @property
     def final_edge_offset(self) -> float:
         """Offset from midpoint to support-fixture wall."""
         return self.params.midpoint.distance(self.support_endpoint)
