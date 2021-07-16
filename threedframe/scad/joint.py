@@ -1,10 +1,9 @@
-import itertools
 from typing import TYPE_CHECKING, List, Type, Iterator, Optional
 
 import attr
 import solid as sp
+import sympy as S
 from loguru import logger
-from solid.extensions.legacy import utils as sutils
 
 from threedframe.config import config
 from threedframe.models.mesh import analyze_scad
@@ -97,39 +96,40 @@ class Joint(JointMeta):
             siblings_by_edge_length = sorted(
                 [fixture, *overlaps], key=lambda f: f.params.adjusted_edge_length
             )
-            shortest_fixture = siblings_by_edge_length[0]
-
-            new_height = None
-            steps = sutils.frange(
-                fixture.extrusion_height, shortest_fixture.params.max_avail_extrusion_height
+            shortest_fixture = next(
+                iter(self.get_sibling_fixtures(fixture, siblings_by_edge_length))
             )
 
-            for st in steps:
-                new_dists = list(
-                    itertools.starmap(
-                        lambda a, b: a.distance_to(b, at=st),
-                        itertools.permutations(siblings_by_edge_length),
-                    )
-                )
-                logger.debug("new distances @ {} -> {}", st, new_dists)
-                clearance_status = [d > config.fixture_size for d in new_dists]
-                logger.debug(
-                    "clearances ({}): {}",
-                    " <-> ".join([f.name for f in siblings_by_edge_length]),
-                    clearance_status,
-                )
-                if all(clearance_status):
-                    new_height = st
-                    break
+            # Min clearance between fixture end-faces with a small buffer.
+            minimum_clearance = config.fixture_size - config.fixture_shell_thickness * 1.15
+
+            # Two points rep. the minimum and max height and resulting clearance distance.
+            p1 = S.Point(
+                fixture.extrusion_height, minimum_clearance - fixture.distance_to(shortest_fixture)
+            )
+            p2 = S.Point(
+                shortest_fixture.params.max_avail_extrusion_height,
+                minimum_clearance
+                - shortest_fixture.distance_to(
+                    fixture, at=shortest_fixture.params.max_avail_extrusion_height
+                ),
+            )
+
+            # Create an eq. in terms height and the resulting clearance.
+            slope = (p2.y - p1.y) / (p2.x - p1.x)
+            x = S.symbols("x")
+            f_height_to_clearance = (slope * x) + fixture.extrusion_height
+            # Now solve for the minimum clearance.
+            optimal_height = float(S.solve(S.Eq(minimum_clearance, f_height_to_clearance))[0])
 
             for adjusted in siblings_by_edge_length:
                 logger.warning(
                     "[{}] overlap lengthen adjustment made (height {} -> {})",
                     adjusted.name,
                     adjusted.extrusion_height,
-                    new_height,
+                    optimal_height,
                 )
-                adjusted.extrusion_height = new_height
+                adjusted.extrusion_height = optimal_height
                 processed.add(adjusted.name)
                 yield adjusted
 
