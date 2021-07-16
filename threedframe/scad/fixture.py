@@ -220,6 +220,11 @@ class Fixture(FixtureMeta):
     def length_label_obj(self) -> OpenSCADObject:
         return bosl2.back(0.5)(self.create_label(self.params.adjusted_edge_length_as_label))
 
+    @property
+    def hole_length(self):
+        """Resulting length of empty space in fixture for support."""
+        return self.params.extrusion_height - config.fixture_shell_thickness
+
     def point_at_distance(self, dist: float) -> EucPoint3:
         """Point along fixture axis `dist` away from fixture midpoint."""
         a: EucPoint3 = self.params.midpoint.copy()
@@ -248,7 +253,7 @@ class Fixture(FixtureMeta):
 
     def create_hole(self) -> OpenSCADObject:
         return bosl2.cube(
-            [config.fixture_hole_size, config.fixture_hole_size, self.extrusion_height],
+            [config.fixture_hole_size, config.fixture_hole_size, self.params.extrusion_height],
             anchor=bosl2.BOTTOM,
             _tags=self.params.hole_tag,
         )
@@ -284,8 +289,7 @@ class Fixture(FixtureMeta):
 
     def do_extrude(self, obj: OpenSCADObject):
         hole = self.create_hole()
-        hole_overlap = (self.extrusion_height / 2) - config.fixture_shell_thickness
-        obj.add(~bosl2.attach(bosl2.CENTER, overlap=hole_overlap)(hole))
+        obj.add(~bosl2.attach(bosl2.TOP, overlap=self.hole_length)(hole))
         obj = self.add_fillets(obj)
         obj = self.add_labels(obj)
         diff_tags = " ".join([self.params.hole_tag, self.params.labels_tag])
