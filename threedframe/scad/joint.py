@@ -199,3 +199,9 @@ class JointSingleFixtureDebug(JointLabelDebug):
         fix.scad_object = fix.do_extrude(fix.scad_object)
         trans_fix_scad = fix.do_transform(fix.scad_object.copy())
         self.scad_object = fix.scad_object + ~trans_fix_scad
+
+
+class JointFixturesOnly(Joint):
+    def assemble(self):
+        self.build_fixtures().build_fixture_meshes()
+        self.scad_object = sp.union() + [f.scad_object for f in self.fixtures]
