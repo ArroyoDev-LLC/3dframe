@@ -36,7 +36,7 @@ class Joint(JointMeta):
     ) -> List["FixtureMeta"]:
         """Retrieve list of fixtures that are sibling to the given."""
         group = fixtures or self.fixtures
-        if not group or not self.has_fixtures:
+        if group is None and not self.has_fixtures:
             raise RuntimeError("Fixtures have not been computed yet!")
         return [f for f in group if f.name != fixture.name]
 
