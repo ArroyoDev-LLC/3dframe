@@ -27,11 +27,14 @@ class Joint(JointMeta):
             params = FixtureParams(source_edge=edge, source_vertex=self.vertex)
             yield params
 
-    def get_sibling_fixtures(self, fixture: "FixtureMeta") -> List["FixtureMeta"]:
+    def get_sibling_fixtures(
+        self, fixture: "FixtureMeta", fixtures: Optional[List["FixtureMeta"]] = None
+    ) -> List["FixtureMeta"]:
         """Retrieve list of fixtures that are sibling to the given."""
-        if not self.has_fixtures:
+        group = fixtures or self.fixtures
+        if not group or not self.has_fixtures:
             raise RuntimeError("Fixtures have not been computed yet!")
-        return [f for f in self.fixtures if f.name != fixture.name]
+        return [f for f in group if f.name != fixture.name]
 
     def find_overlapping_fixtures(
         self, source: "FixtureMeta", fixtures: List["FixtureMeta"]
@@ -74,11 +77,23 @@ class Joint(JointMeta):
             self.fixtures.append(fix)
         return self
 
-    def build_fixture_meshes(self) -> "Joint":
+    def construct_fixture_mesh(self) -> Iterator["SolidFixture"]:
         for fix in self.fixtures:
             solid_fix = SolidFixture(params=fix.params)
+            solid_fix.extrusion_height = fix.extrusion_height
+            yield solid_fix
+
+    def build_fixture_meshes(self) -> "Joint":
+        for solid_fix in self.construct_fixture_mesh():
             solid_fix.assemble()
             self.solid_fixtures.append(solid_fix)
+        for fix in self.fixtures:
+            other_solids = self.get_sibling_fixtures(fix, fixtures=self.solid_fixtures)
+            fix.scad_object -= [of.scad_object for of in other_solids]
+        return self
+
+    def analyze_fixture_meshes(self) -> "Joint":
+        for solid_fix in self.solid_fixtures:
             mesh_analysis = analyze_scad(solid_fix.scad_object)
             self.meshes[solid_fix.params.label] = mesh_analysis
         return self
@@ -94,12 +109,7 @@ class Joint(JointMeta):
         return self
 
     def assemble(self):
-        self.build_fixtures().build_fixture_meshes().build_core()
-        for fixture in self.fixtures:
-            other_solids = [
-                s for s in self.solid_fixtures if s.params.label != fixture.params.label
-            ]
-            fixture.scad_object -= [sf.scad_object for sf in other_solids]
+        self.build_fixtures().build_fixture_meshes().analyze_fixture_meshes().build_core()
         self.scad_object = self.core.scad_object.copy() + [f.scad_object for f in self.fixtures]
 
 
