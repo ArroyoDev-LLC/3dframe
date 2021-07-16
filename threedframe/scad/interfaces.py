@@ -1,10 +1,13 @@
 import abc
-from typing import TYPE_CHECKING, Dict, List, Type, Tuple, Iterator, Optional
+from typing import TYPE_CHECKING, Dict, List, Type, Iterator, Optional
 
 import attr
+from euclid3 import Point3 as EucPoint3
 from solid.core.object_base import OpenSCADObject
 
 from threedframe import utils
+from threedframe.config import config
+from threedframe.constant import Constants
 
 if TYPE_CHECKING:
     from .label import LabelParams
@@ -68,6 +71,54 @@ class FixtureMeta(ScadMeta, abc.ABC):
     @abc.abstractmethod
     def do_transform(self, obj: OpenSCADObject) -> OpenSCADObject:
         raise NotImplementedError
+
+    @property
+    def hole_length(self) -> float:
+        """Resulting length of empty space in fixture for support."""
+        return self.params.extrusion_height - config.fixture_shell_thickness
+
+    @property
+    def support_endpoint(self) -> EucPoint3:
+        """Actual point of the fixture-support meeting wall."""
+        return self.point_at_distance(self.extrusion_height - self.hole_length)
+
+    @property
+    def final_edge_offset(self) -> float:
+        """Offset from midpoint to support-fixture wall."""
+        return self.params.midpoint.distance(self.support_endpoint)
+
+    @property
+    def final_edge_length(self) -> float:
+        """Final support/edge cut length."""
+        return self.params.adjusted_edge_length - self.final_edge_offset
+
+    @property
+    def final_edge_length_label(self) -> str:
+        """Final support/edge length label."""
+        length_in = self.final_edge_length / Constants.INCH
+        val = str(round(length_in, 1))
+        return val.rstrip(".0")
+
+    def point_at_distance(self, dist: float) -> EucPoint3:
+        """Point along fixture axis `dist` away from fixture midpoint."""
+        a: EucPoint3 = self.params.midpoint.copy()
+        b: EucPoint3 = self.params.midpoint.copy()
+        # b is maximum distance away fixture could be.
+        b.set_length(self.params.max_avail_extrusion_height)
+        v = a + (dist * (b - a).normalized())
+        return EucPoint3(*v.as_arr())
+
+    def distance_to(self, other: "FixtureMeta", at: Optional[float] = None) -> float:
+        """Distance (in mm) from this to `other`.
+
+        By default, utilizes the midpoint of the receiving end
+        of each fixture.
+        Alternatively, a distance can be specified with `at.`
+
+        """
+        _at = at or self.extrusion_height
+        oth_at = at or other.extrusion_height
+        return self.point_at_distance(_at).distance(other.point_at_distance(oth_at))
 
     def assemble(self):
         obj = self.create_base()
