@@ -220,6 +220,15 @@ class Fixture(FixtureMeta):
     def length_label_obj(self) -> OpenSCADObject:
         return bosl2.back(0.5)(self.create_label(self.params.adjusted_edge_length_as_label))
 
+    def point_at_distance(self, dist: float) -> EucPoint3:
+        """Point along fixture axis `dist` away from fixture midpoint."""
+        a: EucPoint3 = self.params.midpoint.copy()
+        b: EucPoint3 = self.params.midpoint.copy()
+        # b is maximum distance away fixture could be.
+        b.set_length(self.params.max_avail_extrusion_height)
+        v = (dist * ((a - b).normalized())) + a
+        return EucPoint3(*v.as_arr())
+
     def build_labels(self):
         yield self.source_label_obj
         yield self.target_label_obj
