@@ -1,5 +1,5 @@
 import math
-from typing import TYPE_CHECKING, Type, Tuple
+from typing import TYPE_CHECKING, Type, Tuple, Optional
 
 import attr
 import solid as sp
@@ -228,6 +228,18 @@ class Fixture(FixtureMeta):
         b.set_length(self.params.max_avail_extrusion_height)
         v = (dist * ((a - b).normalized())) + a
         return EucPoint3(*v.as_arr())
+
+    def distance_to(self, other: "Fixture", at: Optional[float] = None) -> float:
+        """Distance (in mm) from this to `other`.
+
+        By default, utilizes the midpoint of the receiving end
+        of each fixture.
+        Alternatively, a distance can be specified with `at.`
+
+        """
+        _at = at or self.extrusion_height
+        oth_at = at or other.extrusion_height
+        return self.point_at_distance(_at).distance(other.point_at_distance(oth_at))
 
     def build_labels(self):
         yield self.source_label_obj
