@@ -321,3 +321,12 @@ class FixtureLabelDebug(Fixture):
             obj.add(right_att(lbl_obj.copy()))
             obj.add(left_att(lbl_obj.copy()))
         return bosl2.diff(self.params.hole_tag, self.params.base_tag)(obj)
+
+
+@attr.s(auto_attribs=True)
+class FixtureSimpleDebug(Fixture):
+    def add_labels(self, obj: OpenSCADObject) -> OpenSCADObject:
+        return obj
+
+    def add_fillets(self, obj: OpenSCADObject) -> OpenSCADObject:
+        return obj
