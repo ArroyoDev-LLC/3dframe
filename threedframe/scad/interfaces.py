@@ -1,5 +1,6 @@
 import abc
 from typing import TYPE_CHECKING, Dict, List, Type, Iterator, Optional
+from pathlib import Path
 
 import attr
 from euclid3 import Point3 as EucPoint3
@@ -29,6 +30,12 @@ class ScadMeta(abc.ABC):
     def file_name(self) -> str:
         """Name of output file if rendered out."""
         return self.name
+
+    def render_scad(self, path: Optional[Path] = None) -> Path:
+        """Renders `OpenSCADObject` to scad file."""
+        _path = path or config.RENDERS_DIR / f"{self.file_name}.scad"
+        utils.write_scad(self.scad_object, _path, header=config.scad_header)
+        return _path
 
     @abc.abstractmethod
     def assemble(self):
