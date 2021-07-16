@@ -103,7 +103,7 @@ class Joint(JointMeta):
             )
 
             # Min clearance between fixture end-faces with a small buffer.
-            minimum_clearance = config.fixture_size - config.fixture_shell_thickness * 1.15
+            minimum_clearance = config.fixture_size / 2.15
 
             # Two points rep. the minimum and max height and resulting clearance distance.
             p1 = S.Point(
