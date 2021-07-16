@@ -210,18 +210,24 @@ class Fixture(FixtureMeta):
 
     @property
     def source_label_obj(self) -> OpenSCADObject:
-        return bosl2.fwd(self.extrusion_height / 4)(self.create_label(self.params.source_label))
+        height_multi = self.params.extrusion_height / self.extrusion_height
+        return bosl2.fwd(self.extrusion_height / 4 * height_multi)(
+            self.create_label(self.params.source_label)
+        )
 
     @property
     def target_label_obj(self) -> OpenSCADObject:
-        return bosl2.back(self.extrusion_height / 3)(self.create_label(self.params.target_label))
+        height_multi = self.params.extrusion_height / self.extrusion_height
+        return bosl2.back(self.extrusion_height / 3 * height_multi)(
+            self.create_label(self.params.target_label)
+        )
 
     @property
     def length_label_obj(self) -> OpenSCADObject:
-        return bosl2.back(0.5)(self.create_label(self.params.adjusted_edge_length_as_label))
+        return bosl2.back(0.5)(self.create_label(self.final_edge_length_label))
 
     @property
-    def hole_length(self):
+    def hole_length(self) -> float:
         """Resulting length of empty space in fixture for support."""
         return self.params.extrusion_height - config.fixture_shell_thickness
 
