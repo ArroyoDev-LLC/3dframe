@@ -274,10 +274,20 @@ def compute(model_path: Path = typer.Argument(..., exists=True, file_okay=True, 
 
 
 @app.command()
-def shell(model_path: Path = ModelPathArg, scale: Optional[float] = ScaleArg):
+def shell(
+    model_path: Path = ModelPathArg,
+    scale: Optional[float] = ScaleArg,
+    vertex: Optional[str] = typer.Argument(None, help="Vertex to inspect."),
+):
     config.SUPPORT_SCALE = scale
     params = JointDirectorParams(model=model_path)
     director = JointDirector(params=params)
+    joint = None  # noqa
+    if vertex:
+        vidx = director.params.model.get_vidx_by_label(vertex)
+        vidx = vidx if vidx is not None else vertex
+        vert = director.params.model.vertices[vidx]
+        joint = director.create_joint(vert)  # noqa
     import IPython  # noqa
 
     IPython.embed()
