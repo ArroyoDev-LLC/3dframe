@@ -274,6 +274,16 @@ def compute(model_path: Path = typer.Argument(..., exists=True, file_okay=True, 
 
 
 @app.command()
+def shell(model_path: Path = ModelPathArg, scale: Optional[float] = ScaleArg):
+    config.SUPPORT_SCALE = scale
+    params = JointDirectorParams(model=model_path)
+    director = JointDirector(params=params)
+    import IPython  # noqa
+
+    IPython.embed()
+
+
+@app.command()
 def setup_host_libs():
     """Setup SCAD libraries on host for previewing renders in openSCAD."""
     config.setup_libs()
