@@ -128,8 +128,11 @@ jobs:
                   done
                   echo "VERTS=${VERT_FLAGS[*]}" >> $GITHUB_ENV
 
+#            - name: Build
+#              run: docker run --rm --entrypoint /app/threedframe/cli.py -v $(pwd):/app/ ghcr.io/arroyodev-llc/threedframe:latest generate data/cybersticksv2.json ${{ join(env.VERTS, ' ') }} --render --scale ${{ matrix.scale }}
+
             - name: Build
-              run: docker run --rm --entrypoint /app/threedframe/cli.py -v $(pwd):/app/ ghcr.io/arroyodev-llc/threedframe:latest generate data/cybersticksv2.json ${{ join(env.VERTS, ' ') }} --render --scale ${{ matrix.scale }}
+              run: docker run --rm --entrypoint /app/threedframe/cli.py -v $(pwd):/app/ ghcr.io/arroyodev-llc/threedframe:latest generate data/cybersticksv2.json -v ${{ matrix.worker }} --render --scale ${{ matrix.scale }}
 
             - name: Upload Renders
               uses: actions/upload-artifact@v2
