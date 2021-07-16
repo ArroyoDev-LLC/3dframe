@@ -17,9 +17,14 @@ config.setup_solid()  # noqa
 
 import threedframe.utils
 from threedframe.scad import JointDirector, JointDirectorParams, ParallelJointDirector
-from threedframe.scad.joint import JointLabelDebug, JointCoreOnlyDebug, JointSingleFixtureDebug
+from threedframe.scad.joint import (
+    JointLabelDebug,
+    JointFixturesOnly,
+    JointCoreOnlyDebug,
+    JointSingleFixtureDebug,
+)
 from threedframe.scad.label import FixtureLabelDebugArrows
-from threedframe.scad.fixture import FixtureLabelDebug
+from threedframe.scad.fixture import FixtureLabelDebug, FixtureSimpleDebug
 
 if TYPE_CHECKING:
     from threedframe.scad.joint import Joint
@@ -32,6 +37,7 @@ class BuildStrategy(str, Enum):
     FIXTURE_LABELS = "debugFixLabels"
     FIXTURE_LABELS_ARROWS = "debugFixLabelsArrows"
     SINGLE_FIXTURE = "debugSingleFixture"
+    SIMPLE_FIXTURES = "debugSimpleFixtures"
     PARALLEL = "parallel"
 
     @property
@@ -47,6 +53,10 @@ class BuildStrategy(str, Enum):
                 "fixture_label_builder": FixtureLabelDebugArrows,
             },
             BuildStrategy.SINGLE_FIXTURE: {"joint_builder": JointSingleFixtureDebug},
+            BuildStrategy.SIMPLE_FIXTURES: {
+                "joint_builder": JointFixturesOnly,
+                "fixture_builder": FixtureSimpleDebug,
+            },
             BuildStrategy.PARALLEL: {"director": ParallelJointDirector},
         }
 
