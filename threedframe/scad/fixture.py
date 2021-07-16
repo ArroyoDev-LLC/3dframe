@@ -235,7 +235,7 @@ class Fixture(FixtureMeta):
         return bosl2.cube(
             [config.fixture_hole_size, config.fixture_hole_size, self.params.extrusion_height],
             anchor=bosl2.BOTTOM,
-            _tags=self.params.hole_tag,
+            _tags="fixture_hole " + self.params.hole_tag,
         )
 
     def create_fillet(self, **kwargs) -> OpenSCADObject:
@@ -248,7 +248,7 @@ class Fixture(FixtureMeta):
         base: OpenSCADObject = bosl2.cube(
             [config.fixture_size, config.fixture_size, self.extrusion_height],
             anchor=bosl2.BOTTOM,
-            _tags=self.params.base_tag,
+            _tags="fixture_base " + self.params.base_tag,
         )
         return base
 
@@ -267,9 +267,13 @@ class Fixture(FixtureMeta):
             obj.add(left_att(lbl_obj.copy()))
         return obj
 
-    def do_extrude(self, obj: OpenSCADObject):
+    def add_hole(self, obj: OpenSCADObject) -> OpenSCADObject:
         hole = self.create_hole()
-        obj.add(~bosl2.attach(bosl2.TOP, overlap=self.hole_length)(hole))
+        obj.add(bosl2.attach(bosl2.TOP, overlap=self.hole_length)(hole))
+        return obj
+
+    def do_extrude(self, obj: OpenSCADObject):
+        obj = self.add_hole(obj)
         obj = self.add_fillets(obj)
         obj = self.add_labels(obj)
         diff_tags = " ".join([self.params.hole_tag, self.params.labels_tag])
