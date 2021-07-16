@@ -1,9 +1,12 @@
-from typing import TYPE_CHECKING, List, Type, Iterator
+import itertools
+from typing import TYPE_CHECKING, List, Type, Iterator, Optional
 
 import attr
 import solid as sp
 from loguru import logger
+from solid.extensions.legacy import utils as sutils
 
+from threedframe.config import config
 from threedframe.models.mesh import analyze_scad
 from threedframe.scad.interfaces import JointMeta, LabelMeta
 
@@ -57,19 +60,78 @@ class Joint(JointMeta):
         fixtures = [
             self.fixture_builder(params=p, label_builder=self.fixture_label_builder) for p in params
         ]
+        processed = set()
         for fixture in fixtures:
+            if processed.issuperset({fixture.name}):
+                continue
+
             overlaps = list(self.find_overlapping_fixtures(fixture, fixtures))
-            if any(overlaps):
+            if not any(overlaps):
+                yield fixture
+                continue
+
+            # check for variance in extrusion heights.
+            ext_heights = {
+                *[
+                    f.extrusion_height
+                    for f in (
+                        fixture,
+                        *overlaps,
+                    )
+                ]
+            }
+            if len(ext_heights) >= 2:
                 siblings_by_height = sorted([fixture, *overlaps], key=lambda f: f.extrusion_height)
                 constraining_fixture = siblings_by_height[0]
                 logger.warning(
-                    "[{}] overlap adjustment made (height {} -> {})",
+                    "[{}] constrained overlap adjustment made (height {} -> {})",
                     fixture.name,
                     fixture.extrusion_height,
                     constraining_fixture.extrusion_height,
                 )
                 fixture.extrusion_height = constraining_fixture.extrusion_height
-            yield fixture
+                yield fixture
+                continue
+
+            # shortest -> longest
+            siblings_by_edge_length = sorted(
+                [fixture, *overlaps], key=lambda f: f.params.adjusted_edge_length
+            )
+            shortest_fixture = siblings_by_edge_length[0]
+
+            new_height = None
+            steps = sutils.frange(
+                fixture.extrusion_height, shortest_fixture.params.max_avail_extrusion_height
+            )
+
+            for st in steps:
+                new_dists = list(
+                    itertools.starmap(
+                        lambda a, b: a.distance_to(b, at=st),
+                        itertools.permutations(siblings_by_edge_length),
+                    )
+                )
+                logger.debug("new distances @ {} -> {}", st, new_dists)
+                clearance_status = [d > config.fixture_size for d in new_dists]
+                logger.debug(
+                    "clearances ({}): {}",
+                    " <-> ".join([f.name for f in siblings_by_edge_length]),
+                    clearance_status,
+                )
+                if all(clearance_status):
+                    new_height = st
+                    break
+
+            for adjusted in siblings_by_edge_length:
+                logger.warning(
+                    "[{}] overlap lengthen adjustment made (height {} -> {})",
+                    adjusted.name,
+                    adjusted.extrusion_height,
+                    new_height,
+                )
+                adjusted.extrusion_height = new_height
+                processed.add(adjusted.name)
+                yield adjusted
 
     def build_fixtures(self) -> "Joint":
         for fix in self.construct_fixtures():
