@@ -3,8 +3,10 @@ from typing import TYPE_CHECKING, List, Type, Iterator, Optional
 import attr
 import solid as sp
 import sympy as S
+import solid.extensions.legacy.utils as sutils
 from loguru import logger
 
+from threedframe import utils
 from threedframe.config import config
 from threedframe.models.mesh import analyze_scad
 from threedframe.scad.interfaces import JointMeta, LabelMeta
@@ -203,5 +205,17 @@ class JointSingleFixtureDebug(JointLabelDebug):
 
 class JointFixturesOnly(Joint):
     def assemble(self):
-        self.build_fixtures().build_fixture_meshes()
-        self.scad_object = sp.union() + [f.scad_object for f in self.fixtures]
+        self.build_fixtures()
+        color_gen = utils.rand_color_generator()
+        f_color = next(color_gen)
+        self.scad_object = sp.color(c=f_color, alpha=0.4)(self.fixtures[0].scad_object)
+        for fix in self.fixtures[1:]:
+            f_color = next(color_gen)
+            mp = fix.support_endpoint
+            sph = sp.sphere(3)
+            self.scad_object += sp.color(c=f_color, alpha=0.4)(fix.scad_object)
+            self.scad_object += sp.color(c=f_color, alpha=0.6)(
+                sutils.transform_to_point(
+                    sph, dest_point=mp, dest_normal=fix.params.vector_from_origin
+                )
+            )
