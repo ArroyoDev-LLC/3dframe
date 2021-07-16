@@ -187,11 +187,4 @@ class JointFixturesOnly(Joint):
         self.scad_object = sp.color(c=f_color, alpha=0.4)(self.fixtures[0].scad_object)
         for fix in self.fixtures[1:]:
             f_color = next(color_gen)
-            mp = fix.support_endpoint
-            sph = sp.sphere(3)
             self.scad_object += sp.color(c=f_color, alpha=0.4)(fix.scad_object)
-            self.scad_object += sp.color(c=f_color, alpha=0.6)(
-                sutils.transform_to_point(
-                    sph, dest_point=mp, dest_normal=fix.params.vector_from_origin
-                )
-            )
