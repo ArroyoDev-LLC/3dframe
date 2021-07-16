@@ -225,6 +225,24 @@ class Fixture(FixtureMeta):
         """Resulting length of empty space in fixture for support."""
         return self.params.extrusion_height - config.fixture_shell_thickness
 
+    @property
+    def support_endpoint(self) -> EucPoint3:
+        """Actual point of the fixture-support meeting wall."""
+        return self.point_at_distance(self.extrusion_height - self.hole_length)
+
+    @property
+    def final_edge_length(self) -> float:
+        """Final support/edge cut length."""
+        offset_dist = self.params.midpoint.distance(self.support_endpoint)
+        return self.params.adjusted_edge_length - offset_dist
+
+    @property
+    def final_edge_length_label(self) -> str:
+        """Final support/edge length label."""
+        length_in = self.final_edge_length / Constants.INCH
+        val = str(round(length_in, 1))
+        return val.rstrip(".0")
+
     def point_at_distance(self, dist: float) -> EucPoint3:
         """Point along fixture axis `dist` away from fixture midpoint."""
         a: EucPoint3 = self.params.midpoint.copy()
