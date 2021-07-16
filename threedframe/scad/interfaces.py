@@ -142,7 +142,6 @@ class FixtureMeta(ScadMeta, abc.ABC):
 @attr.s(auto_attribs=True)
 class CoreMeta(ScadMeta, abc.ABC):
     fixtures: List["FixtureMeta"] = ...
-    meshes: Dict[str, "MeshData"] = ...
 
     @abc.abstractmethod
     def assemble(self):
@@ -212,10 +211,6 @@ class JointMeta(ScadMeta, abc.ABC):
 
     @abc.abstractmethod
     def build_fixtures(self) -> Type["JointMeta"]:
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def build_fixture_meshes(self) -> Iterator[Tuple[str, "MeshData"]]:
         raise NotImplementedError
 
     @abc.abstractmethod

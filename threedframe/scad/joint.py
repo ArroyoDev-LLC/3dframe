@@ -3,17 +3,16 @@ from typing import TYPE_CHECKING, List, Type, Iterator, Optional
 import attr
 import solid as sp
 import sympy as S
-import solid.extensions.legacy.utils as sutils
+import solid.extensions.bosl2.std as bosl2
 from loguru import logger
 
 from threedframe import utils
 from threedframe.config import config
-from threedframe.models.mesh import analyze_scad
 from threedframe.scad.interfaces import JointMeta, LabelMeta
 
 from .core import Core
 from .label import CoreLabel, FixtureLabel
-from .fixture import Fixture, SolidFixture, FixtureParams
+from .fixture import Fixture, FixtureParams
 
 if TYPE_CHECKING:
     from .interfaces import CoreMeta, FixtureMeta
@@ -141,40 +140,17 @@ class Joint(JointMeta):
             self.fixtures.append(fix)
         return self
 
-    def construct_fixture_mesh(self) -> Iterator["SolidFixture"]:
-        for fix in self.fixtures:
-            solid_fix = SolidFixture(params=fix.params)
-            solid_fix.extrusion_height = fix.extrusion_height
-            yield solid_fix
-
-    def build_fixture_meshes(self) -> "Joint":
-        for solid_fix in self.construct_fixture_mesh():
-            solid_fix.assemble()
-            self.solid_fixtures.append(solid_fix)
-        for fix in self.fixtures:
-            other_solids = self.get_sibling_fixtures(fix, fixtures=self.solid_fixtures)
-            fix.scad_object -= [of.scad_object for of in other_solids]
-        return self
-
-    def analyze_fixture_meshes(self) -> "Joint":
-        for solid_fix in self.solid_fixtures:
-            mesh_analysis = analyze_scad(solid_fix.scad_object)
-            self.meshes[solid_fix.params.label] = mesh_analysis
-        return self
-
     def build_core(self) -> "Joint":
-        core = self.core_builder(fixtures=self.fixtures, meshes=self.meshes)
+        core = self.core_builder(fixtures=self.fixtures)
         core.assemble()
-        # ensure core-facing joint is hollowed out.
-        for solid_fix in self.solid_fixtures:
-            overlap = core.scad_object.copy() * solid_fix.scad_object.copy()
-            core.scad_object -= overlap
         self.core = core
         return self
 
     def assemble(self):
-        self.build_fixtures().build_fixture_meshes().analyze_fixture_meshes().build_core()
+        self.build_fixtures().build_core()
         self.scad_object = self.core.scad_object.copy() + [f.scad_object for f in self.fixtures]
+        # ensure we cleanup any potential overlapped corners and such.
+        self.scad_object = bosl2.diff("fixture_hole", "fixture_base")(self.scad_object)
 
 
 class JointCoreOnlyDebug(Joint):
