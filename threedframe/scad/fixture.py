@@ -1,7 +1,9 @@
 import math
-from typing import TYPE_CHECKING, Type, Tuple
+from enum import Enum
+from typing import TYPE_CHECKING, Type, Tuple, Union, Optional, DefaultDict
 
 import attr
+import numpy as np
 import solid as sp
 import sympy as S
 import open3d as o3d
@@ -305,6 +307,17 @@ class Fixture(FixtureMeta):
         )
         return obj
 
+    def create_hole_obj(self) -> OpenSCADObject:
+        """Cuboid of inner fixture hole."""
+        obj = self.create_base()
+        obj = self.add_hole(obj)
+        obj = self.do_transform(obj)
+        obj = bosl2.hide(self.params.base_tag)(obj)
+        return obj
+
+    def create_hole_mesh(self):
+        obj = self.create_hole_obj()
+        return self.compute_mesh(obj)
 
 @attr.s(auto_attribs=True)
 class SolidFixture(Fixture):
