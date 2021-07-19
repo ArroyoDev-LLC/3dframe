@@ -1,6 +1,7 @@
 """3DFrame Constants."""
 
 from enum import Enum
+from typing import List, Union
 
 import numpy as np
 import sympy as S
@@ -53,3 +54,17 @@ class PlanarConstants(Enum):
         return EucVector3(*self.value).copy()
 
 
+class RenderFileType(str, Enum):
+    STL = "stl"
+    PNG = "png"
+
+    @property
+    def _scad_args(self):
+        return {
+            RenderFileType.STL: [],
+            RenderFileType.PNG: ["--autocenter", "--viewall", "--render=full", "--projection=p"],
+        }
+
+    @property
+    def scad_args(self):
+        return self._scad_args[self]
