@@ -85,6 +85,12 @@ class JointDirector:
         )
         return _build_params
 
+    def vertex_by_idx_or_label(self, v: Union[int, str]) -> "ModelVertex":
+        """Resolve vertex obj from vidx or label."""
+        vidx = self.params.model.get_vidx_by_label(v)
+        vidx = vidx if vidx is not None else int(vidx)
+        return self.params.model.vertices[vidx]
+
     def create_joint(self, vertex: Union[int, "ModelVertex"]) -> "JointMeta":
         """Create joint object to be assembled."""
         vert = vertex if isinstance(vertex, ModelVertex) else self.params.model.vertices[vertex]
