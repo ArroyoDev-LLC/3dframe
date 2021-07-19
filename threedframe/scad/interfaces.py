@@ -199,7 +199,7 @@ class JointMeta(ScadMeta, abc.ABC):
 
     @property
     def file_name(self) -> str:
-        return f"joint-v{self.vertex.label}"
+        return f"joint-{self.vertex.label}"
 
     @property
     def has_fixtures(self) -> bool:
