@@ -19,22 +19,6 @@ if TYPE_CHECKING:
     from .interfaces import CoreMeta, JointMeta, LabelMeta, FixtureMeta
 
 
-class RenderFileType(str, Enum):
-    STL = "stl"
-    PNG = "png"
-
-    @property
-    def _scad_args(self):
-        return {
-            RenderFileType.STL: ["--export-format=binstl"],
-            RenderFileType.PNG: ["--autocenter", "--viewall", "--render=full", "--projection=p"],
-        }
-
-    @property
-    def scad_args(self):
-        return self._scad_args[self]
-
-
 class JointDirectorParams(BaseModel):
     joint_builder: Optional[Type["JointMeta"]] = Joint
     fixture_builder: Optional[Type["FixtureMeta"]] = None
