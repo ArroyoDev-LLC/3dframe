@@ -133,6 +133,9 @@ class FixtureMeta(ScadMeta, abc.ABC):
         v = a + (dist * (b - a).normalized())
         return EucPoint3(*v.as_arr())
 
+    def copy(self, **kws):
+        return self.__class__(params=self.params, **kws)
+
     def distance_to(self, other: "FixtureMeta", at: Optional[float] = None) -> float:
         """Distance (in mm) from this to `other`.
 
