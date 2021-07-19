@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, List, Optional
 from pathlib import Path
 
 import typer
-import open3d as o3d
 from rich import print
 from devtools import debug
 from rich.tree import Tree
@@ -15,6 +14,8 @@ from rich.table import Table
 from threedframe.config import config  # noqa
 
 config.setup_solid()  # noqa
+
+from codetiming import Timer
 
 import threedframe.utils
 from threedframe.scad import JointDirector, JointDirectorParams, ParallelJointDirector
@@ -152,6 +153,24 @@ def generate(
     )
     director.assemble()
 
+    perf_grid = Table(
+        "Timer", "Entries", "Total", "Min", "Max", "Avg", "Median", "Stdev", title="Benchmarks"
+    )
+    for timer_name in Timer.timers.keys():
+        meths = (
+            "count",
+            "total",
+            "min",
+            "max",
+            "mean",
+            "median",
+            "stdev",
+        )
+        stats = [str(round(getattr(Timer.timers, m)(timer_name), 3)) for m in meths]
+        perf_grid.add_row(timer_name, *stats)
+
+    print("")
+    print(perf_grid)
     if preview:
         vidx = director.vertex_by_idx_or_label(next(iter(vertices)))
         director.preview_joint(vidx)
