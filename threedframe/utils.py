@@ -419,3 +419,23 @@ def rotate_about_pt(obj: OpenSCADObject, z: float, y: float, pt: GeomType):
     """
     _pt = euclidify(pt)
     return solid.translate(_pt)(solid.rotate((0, y, z))(solid.translate(-_pt)(obj)))
+
+
+def _none_factory():
+    """Workaround factory for pickleable default none dict.
+
+    See Also:
+        `default_nonedict`
+
+    """
+    return None
+
+
+def default_nonedict() -> DefaultDict[str, None]:
+    """Helper for creating pickleable default none dict.
+
+    This is (unfortunately) necessary b/c pickle cannot serialize
+    lambdas or local functions.
+
+    """
+    return collections.defaultdict(_none_factory)
