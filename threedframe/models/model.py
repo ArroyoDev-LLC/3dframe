@@ -48,6 +48,12 @@ class ModelVertex(BaseModel):
             return next(MODEL_LABELS)
         return v
 
+    def __hash__(self):
+        return hash(self.vidx)
+
+    def __eq__(self, other):
+        return self.vidx == other.vidx
+
 
 def label_generator() -> Iterator[str]:
     """Generates labels for vertices.
