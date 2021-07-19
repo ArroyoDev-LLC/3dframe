@@ -198,6 +198,12 @@ class FixtureParams(BaseModel):
         return math.degrees(angle_rad)
 
 
+class FixtureMeshType(str, Enum):
+    BASE = "base"
+    HOLE = "hole"
+    SHELL = "shell"
+
+
 @attr.s(auto_attribs=True)
 class Fixture(FixtureMeta):
     label_builder: Type["LabelMeta"] = FixtureLabel
