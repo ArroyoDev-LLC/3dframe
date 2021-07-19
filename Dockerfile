@@ -31,7 +31,7 @@ FROM python:3.8-buster as deps
 ARG NUM_CORES=4
 ENV NUMCPU $NUM_CORES
 
-# Pymesh + OpenSCAD + Blender deps
+# Open3D + OpenSCAD + Blender deps
 RUN curl -L -o /get-oscad-deps.sh https://raw.githubusercontent.com/openscad/openscad/openscad-2021.01/scripts/uni-get-dependencies.sh \
     && curl -L -o /check-oscad-deps.sh https://raw.githubusercontent.com/openscad/openscad/openscad-2021.01/scripts/check-dependencies.sh \
     && chmod +x /get-oscad-deps.sh && chmod +x /check-oscad-deps.sh \
@@ -46,6 +46,10 @@ RUN curl -L -o /get-oscad-deps.sh https://raw.githubusercontent.com/openscad/ope
         libboost-dev \
         libboost-thread-dev \
         zip unzip patchelf \
+        # Open3D specific
+        libgl1 \
+        libgomp1 \
+        libusb-1.0-0 \
         # Blender specific
         curl \
         libfreetype6 \
@@ -92,32 +96,8 @@ RUN curl -L ${BLENDER_URL} | tar -xJ -C /usr/local/ && \
 	mv /usr/local/blender-${BLENDER_VERSION}-linux64 /blender
 
 
-### Compile Pymesh
-FROM deps as pymesh
-
-WORKDIR /root/
-ARG BRANCH="main"
-ARG NUM_CORES=4
-
-RUN git clone --single-branch -b $BRANCH https://github.com/PyMesh/PyMesh.git
-
-ENV PYMESH_PATH /root/PyMesh
-ENV NUM_CORES $NUM_CORES
-ENV NUMCPU $NUM_CORES
-WORKDIR $PYMESH_PATH
-
-RUN git submodule update --init && \
-    pip install -r $PYMESH_PATH/python/requirements.txt && \
-    ./setup.py bdist_wheel && \
-    rm -rf build_3.7 third_party/build && \
-    python $PYMESH_PATH/docker/patches/patch_wheel.py dist/pymesh2*.whl && \
-    pip install dist/pymesh2*.whl && \
-    python -c "import pymesh; pymesh.test()"
-
-
 ### 3dframe App
-FROM pymesh AS app
-
+FROM deps AS app
 
 # Copy OpenSCAD & Blender binaries
 COPY --from=openscad /openscad /usr/local/bin/openscad
