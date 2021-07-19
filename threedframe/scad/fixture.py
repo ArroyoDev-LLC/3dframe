@@ -336,6 +336,19 @@ class Fixture(FixtureMeta):
             self.meshes[mesh_type] = getattr(self, f"create_{mesh_type}_mesh")()
         return self.meshes[mesh_type]
 
+
+    @property
+    def base_mesh(self) -> o3d.geometry.TriangleMesh:
+        return self._lazy_mesh(FixtureMeshType.BASE)
+
+    @property
+    def hole_mesh(self) -> o3d.geometry.TriangleMesh:
+        return self._lazy_mesh(FixtureMeshType.HOLE)
+
+    @property
+    def shell_mesh(self) -> o3d.geometry.TriangleMesh:
+        return self._lazy_mesh(FixtureMeshType.SHELL)
+
 @attr.s(auto_attribs=True)
 class SolidFixture(Fixture):
     def create_base(self) -> OpenSCADObject:
