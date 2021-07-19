@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, List, Optional
 from pathlib import Path
 
 import typer
+import open3d as o3d
 from rich import print
 from devtools import debug
 from rich.tree import Tree
@@ -103,6 +104,9 @@ def generate(
     render: Optional[bool] = typer.Option(
         False, "-r", "--render", help="Render mesh.", is_flag=True
     ),
+    preview: bool = typer.Option(
+        False, "-p", "--preview", help="Preview fixture output mesh. Implies render.", is_flag=True
+    ),
     render_format: Optional[str] = typer.Option("stl", "-f", "--format", help="Render file type."),
     scale: Optional[float] = ScaleArg,
     dump_config: Optional[bool] = typer.Option(
@@ -113,6 +117,8 @@ def generate(
     ),
 ):
     """Generate joint model from given vertices."""
+    if preview:
+        render = True
     if not vertices:
         typer.confirm("Are you sure you want to render ALL vertices?", abort=True)
         vertices = None  # indicates all in director params.
@@ -140,10 +146,15 @@ def generate(
         debug(config.computed_values)
         debug(params)
         return
+
     typer.secho(
         f"Building joints for {vert_count} vertices.", bold=True, fg=typer.colors.BRIGHT_WHITE
     )
     director.assemble()
+
+    if preview:
+        vidx = director.vertex_by_idx_or_label(next(iter(vertices)))
+        director.preview_joint(vidx)
 
 
 @app.command()
