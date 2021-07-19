@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Dict, List, Type, Iterator, Optional
 from pathlib import Path
 
 import attr
+import open3d as o3d
 from euclid3 import Point3 as EucPoint3
 from solid.core.object_base import OpenSCADObject
 
@@ -36,6 +37,18 @@ class ScadMeta(abc.ABC):
         _path = path or config.RENDERS_DIR / f"{self.file_name}.scad"
         utils.write_scad(self.scad_object, _path, header=config.scad_header)
         return _path
+
+    def compute_mesh(self, obj: Optional[OpenSCADObject] = None) -> o3d.geometry.TriangleMesh:
+        """Compute o3d triangle mesh from given scad object."""
+        with utils.TemporaryScadWorkspace() as renderer:
+            renderer.add_scad(obj or self.scad_object, name="mesh")
+            renderer.render()
+            mesh: o3d.geometry.TriangleMesh = o3d.io.read_triangle_mesh(
+                str(renderer.renders["mesh"])
+            )
+            mesh.compute_vertex_normals()
+            mesh.compute_triangle_normals()
+            return mesh
 
     @abc.abstractmethod
     def assemble(self):
