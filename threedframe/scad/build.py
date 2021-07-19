@@ -94,42 +94,51 @@ class JointDirector:
     def create_joint(self, vertex: Union[int, "ModelVertex"]) -> "JointMeta":
         """Create joint object to be assembled."""
         vert = vertex if isinstance(vertex, ModelVertex) else self.params.model.vertices[vertex]
-        return self.params.joint_builder(vertex=vert, **self.builder_params)
+        self.joints[vert] = self.params.joint_builder(vertex=vert, **self.builder_params)
+        return self.joints[vert]
 
+    @Timer("build>joint", logger=logger.success)
     @logger.catch(reraise=True)
     def build_joint(self, vertex: "ModelVertex") -> Optional["JointMeta"]:
-        scad_path = self.get_joint_file_path(vertex.vidx)
-        if not self.params.overwrite and scad_path.exists() and self.params.render:
-            logger.warning(f"Joint for vertex: {vertex.vidx} already exists, skipping to render...")
-            return self.render_joint(scad_path)
         logger.info("Building joint for vertex: {}", vertex.vidx)
         joint = self.create_joint(vertex=vertex)
         joint.assemble()
         self.write_joint(joint)
         return joint
 
-    def get_joint_file_path(self, vertex_label: str) -> Path:
-        file_name = f"joint-{vertex_label}.scad"
-        out_path = config.RENDERS_DIR / file_name
-        return out_path
-
+    @Timer("build>write joint", logger=logger.success)
     def write_joint(self, joint: "JointMeta"):
-        out_path = self.get_joint_file_path(joint.vertex.label)
+        out_path = config.RENDERS_DIR / f"{joint.file_name}.scad"
         utils.write_scad(joint.scad_object, out_path, header=config.scad_header)
+        self.scad_paths[joint.vertex] = out_path
         if self.params.render:
-            self.render_joint(out_path)
+            return self.render_joint(joint)
 
-    def render_joint(self, scad_path: Path):
-        out_path = scad_path.with_suffix(f".{self.params.render_file_type}")
+    @Timer("build>render joint", logger=logger.success)
+    def render_joint(self, joint: "JointMeta"):
+        out_path = config.RENDERS_DIR / f"{joint.file_name}.{self.params.render_file_type}"
+        self.render_paths[joint.vertex] = out_path
         logger.success("Writing mesh -> {}", out_path)
         proc = utils.openscad_cmd(
-            *self.params.render_file_type.scad_args, "-o", str(out_path), str(scad_path)
+            *self.params.render_file_type.scad_args,
+            "-o",
+            str(out_path),
+            str(self.scad_paths[joint.vertex]),
         )
         for line in iter(proc.stderr.readline, b""):
             outline = line.decode().rstrip("\n")
             logger.debug("[OpenSCAD]: {}", outline)
 
-    @Timer(logger=logger.success)
+    def preview_joint(self, vertex: "ModelVertex"):
+        rnd_path = self.render_paths[vertex]
+        mesh: o3d.geometry.TriangleMesh = o3d.io.read_triangle_mesh(
+            str(rnd_path), enable_post_processing=True, print_progress=True
+        )
+        mesh.compute_vertex_normals()
+        mesh.compute_triangle_normals()
+        o3d.visualization.draw([mesh])
+
+    @Timer("build", logger=logger.success)
     def assemble(self):
         logger.info("Constructing joint objects for {} vertices.", len(self.params.model.vertices))
         logger.debug("Director builders: {}", self.builder_params)
@@ -139,7 +148,7 @@ class JointDirector:
 
 
 class ParallelJointDirector(JointDirector):
-    @Timer(logger=logger.success)
+    @Timer("build", logger=logger.success)
     def assemble(self):
         logger.info("Constructing joint objects for {} vertices.", len(self.params.model.vertices))
         logger.debug("Director builders: {}", self.builder_params)
