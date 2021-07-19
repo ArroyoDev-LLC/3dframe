@@ -202,6 +202,11 @@ class FixtureParams(BaseModel):
 class Fixture(FixtureMeta):
     label_builder: Type["LabelMeta"] = FixtureLabel
 
+    def copy(self) -> "Fixture":
+        copied = super().copy(label_builder=self.label_builder)
+        copied.extrusion_height = self.extrusion_height
+        return copied
+
     def create_label(self, content: str) -> OpenSCADObject:
         params = FixtureLabelParams(content=content, target=self)
         label = self.label_builder(params=params)
