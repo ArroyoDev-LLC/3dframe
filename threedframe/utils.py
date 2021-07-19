@@ -30,6 +30,8 @@ from watchdog.observers import Observer
 from solid.core.object_base import OpenSCADObject
 from solid.extensions.scad_interface import ScadInterface
 
+from threedframe.constant import RenderFileType
+
 
 class ComputeTestResultsColumn(ProgressColumn):
     """Renders test results with ascii characters."""
@@ -127,11 +129,16 @@ def write_scad(element: OpenSCADObject, path: Path, segments=48, header: Optiona
 
 
 class TemporaryScadWorkspace(TemporaryDirectory):
-    def __init__(
-        self, *args, scad_objs: List[Tuple[str, OpenSCADObject, Union[str, None]]], **kwargs
-    ):
+    renders: Dict[str, Path]
+    scad_objs: List[Tuple[str, OpenSCADObject, Union[str, None]]]
+    scad_interface: Optional[ScadInterface]
+    proc: Optional[sp.Popen]
+
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.scad_objs = scad_objs
+        self.renders = {}
+        self.scad_objs = []
+        self.scad_interface = None
         self.path: Path = Path(self.name)
         self.proc = None
 
@@ -140,18 +147,45 @@ class TemporaryScadWorkspace(TemporaryDirectory):
             outline = line.decode().rstrip("\n")
             print(f"[grey42]{outline}")
 
-    def __enter__(self) -> Tuple[Path, List[Tuple[str, Path, Union[Path, None]]]]:
-        files = []
-        for name, obj, mesh_format in self.scad_objs:
-            obj_path = (self.path / name).with_suffix(".scad")
-            render_path = None
-            write_scad(obj, obj_path)
-            if mesh_format:
-                render_path = obj_path.with_suffix(f".{mesh_format}")
-                self.proc = openscad_cmd("-o", str(render_path), str(obj_path))
-                self._stream_proc(self.proc)
-            files.append((name, obj_path, render_path))
-        return self.path, files
+    def add_scad(
+        self,
+        obj: OpenSCADObject,
+        render_type: Optional[RenderFileType] = RenderFileType.STL,
+        name: Optional[str] = None,
+    ) -> "TemporaryScadWorkspace":
+        """Add SCAD object to workspace."""
+        _name = name or "target"
+        self.scad_objs.append(
+            (
+                _name,
+                obj,
+                render_type,
+            )
+        )
+        return self
+
+    def render_scad(self, name: str, obj: OpenSCADObject, render_type: RenderFileType):
+        """Render SCAD to temporary dir."""
+        obj_path = (self.path / name).with_suffix(".scad")
+        render_path = None
+        header_str = None
+        if self.scad_interface:
+            header_str = self.scad_interface.get_header_str()
+        write_scad(obj, obj_path, header=header_str)
+        if render_type:
+            render_path = obj_path.with_suffix(f".{render_type}")
+            self.proc = openscad_cmd("-o", str(render_path), str(obj_path))
+            self._stream_proc(self.proc)
+        self.renders[name] = render_path
+
+    def render(self) -> Dict[str, Path]:
+        """Render all scads."""
+        for scad_obj in self.scad_objs:
+            self.render_scad(*scad_obj)
+        return self.renders
+
+    def __enter__(self) -> "TemporaryScadWorkspace":
+        return self
 
 
 # Fixed version of label size.
