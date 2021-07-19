@@ -283,12 +283,16 @@ class Fixture(FixtureMeta):
         obj.add(bosl2.attach(bosl2.TOP, overlap=self.hole_length)(hole))
         return obj
 
+    def subtract_parts(self, obj: OpenSCADObject) -> OpenSCADObject:
+        diff_tags = " ".join([self.params.hole_tag, self.params.labels_tag])
+        return bosl2.diff(diff_tags, self.params.base_tag)(obj)
+
     def do_extrude(self, obj: OpenSCADObject):
         obj = self.add_hole(obj)
         obj = self.add_fillets(obj)
         obj = self.add_labels(obj)
-        diff_tags = " ".join([self.params.hole_tag, self.params.labels_tag])
-        return bosl2.diff(diff_tags, self.params.base_tag)(obj)
+        obj = self.subtract_parts(obj)
+        return obj
 
     def do_transform(self, obj: sp.core.object_base.OpenSCADObject):
         obj = sputils.transform_to_point(
