@@ -330,6 +330,12 @@ class Fixture(FixtureMeta):
         obj = self.subtract_parts(obj)
         obj = self.do_transform(obj)
         return self.compute_mesh(obj)
+
+    def _lazy_mesh(self, mesh_type: FixtureMeshType):
+        if self.meshes[mesh_type] is None:
+            self.meshes[mesh_type] = getattr(self, f"create_{mesh_type}_mesh")()
+        return self.meshes[mesh_type]
+
 @attr.s(auto_attribs=True)
 class SolidFixture(Fixture):
     def create_base(self) -> OpenSCADObject:
