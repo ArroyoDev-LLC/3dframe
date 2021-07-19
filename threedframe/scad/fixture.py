@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Type, Tuple
 import attr
 import solid as sp
 import sympy as S
+import open3d as o3d
 import solid.extensions.bosl2.std as bosl2
 import solid.extensions.legacy.utils as sputils
 from loguru import logger
@@ -12,6 +13,7 @@ from euclid3 import Vector3 as EucVector3
 from pydantic.main import BaseModel
 from solid.core.object_base import OpenSCADObject
 
+from threedframe import utils
 from threedframe.config import config
 from threedframe.models import ModelEdge, ModelVertex
 from threedframe.constant import Constants, PlanarConstants
@@ -207,6 +209,9 @@ class FixtureMeshType(str, Enum):
 @attr.s(auto_attribs=True)
 class Fixture(FixtureMeta):
     label_builder: Type["LabelMeta"] = FixtureLabel
+    meshes: DefaultDict[FixtureMeshType, Optional[o3d.geometry.TriangleMesh]] = attr.ib(
+        factory=utils.default_nonedict
+    )
 
     def copy(self) -> "Fixture":
         copied = super().copy(label_builder=self.label_builder)
