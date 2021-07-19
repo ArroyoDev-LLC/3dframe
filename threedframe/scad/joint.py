@@ -31,8 +31,8 @@ class Joint(JointMeta):
             yield params
 
     def get_sibling_fixtures(
-        self, fixture: "FixtureMeta", fixtures: Optional[List["FixtureMeta"]] = None
-    ) -> List["FixtureMeta"]:
+        self, fixture: "Fixture", fixtures: Optional[List["Fixture"]] = None
+    ) -> List["Fixture"]:
         """Retrieve list of fixtures that are sibling to the given."""
         group = fixtures or self.fixtures
         if group is None and not self.has_fixtures:
@@ -50,87 +50,57 @@ class Joint(JointMeta):
             _fixtures = list(pool.starmap(Fixture.serialize_mesh, tasks))
         return _fixtures
 
-    def construct_fixtures(self) -> Iterator["FixtureMeta"]:
+    @Timer(name="build>find_fixture_intersections", logger=logger.trace)
+    def find_fixture_intersections(self, fixtures: List["Fixture"]) -> Dict[str, Set]:
+        # Set of other fixtures that intersect K's support hole..
+        fixtures_states: Dict[str, Set] = dict()
+
+        for fa, fb in itertools.combinations(fixtures, r=2):
+            fixtures_states.setdefault(fa.name, set())
+            fixtures_states.setdefault(fb.name, set())
+            if fa.does_intersect_other_support(fb):
+                fixtures_states[fb.name].add(fa.name)
+            if fb.does_intersect_other_support(fa):
+                fixtures_states[fa.name].add(fb.name)
+        logger.trace("fixture intersect states: {}", fixtures_states)
+        return fixtures_states
+
+    def construct_fixtures(self) -> List["FixtureMeta"]:
         params = self.build_fixture_params()
         fixtures = [
             self.fixture_builder(params=p, label_builder=self.fixture_label_builder) for p in params
         ]
-        processed = set()
-        for fixture in fixtures:
-            if processed.issuperset({fixture.name}):
-                continue
 
-            overlaps = list(self.find_overlapping_fixtures(fixture, fixtures))
-            if not any(overlaps):
-                yield fixture
-                continue
+        # precompute meshes in parallel for time.
+        meshes = self.compute_fixture_meshes(fixtures)
+        for fname, mesh, mesh_type in meshes:
+            fix = next((f for f in fixtures if f.name == fname))
+            fix.meshes[mesh_type] = mesh.to_open3d(do_compute=True)
 
-            # check for variance in extrusion heights.
-            ext_heights = {
-                *[
-                    f.extrusion_height
-                    for f in (
-                        fixture,
-                        *overlaps,
-                    )
-                ]
-            }
-            if len(ext_heights) >= 2:
-                siblings_by_height = sorted([fixture, *overlaps], key=lambda f: f.extrusion_height)
-                constraining_fixture = siblings_by_height[0]
-                logger.warning(
-                    "[{}] constrained overlap adjustment made (height {} -> {})",
-                    fixture.name,
-                    fixture.extrusion_height,
-                    constraining_fixture.extrusion_height,
-                )
-                fixture.extrusion_height = constraining_fixture.extrusion_height
-                yield fixture
-                continue
+        _fixtures: Dict[str, "Fixture"] = {f.name: f for f in fixtures}
+        _fixtures_names = set(list(_fixtures.keys()))
+        init_intersections = self.find_fixture_intersections(list(_fixtures.values()))
+        _intersecting_fixtures = [_fixtures[k] for k, v in init_intersections.items() if any(v)]
+        logger.warning("intersecting fixtures: {}", [f.name for f in _intersecting_fixtures])
 
-            # shortest -> longest
-            siblings_by_edge_length = sorted(
-                [fixture, *overlaps], key=lambda f: f.params.adjusted_edge_length
-            )
-            shortest_fixture = next(
-                iter(self.get_sibling_fixtures(fixture, siblings_by_edge_length))
-            )
+        while True:
+            intersections = self.find_fixture_intersections(_intersecting_fixtures)
+            inter_by_all = [any(ib) for ib in intersections.values()]
+            logger.warning("remaining intersections: {} {}", intersections, inter_by_all)
+            if not any(inter_by_all):
+                break
+            for fname, intersected_by in intersections.items():
+                fix = _fixtures[fname]
+                if any(intersected_by):
+                    logger.warning("[{}] intersected by: {}", fix.name, intersected_by)
+                    fix.extend_fixture_base(1)
+                    _fixtures[fix.name] = fix
 
-            # Min clearance between fixture end-faces with a small buffer.
-            minimum_clearance = config.fixture_size / 2.15
-
-            # Two points rep. the minimum and max height and resulting clearance distance.
-            p1 = S.Point(
-                fixture.extrusion_height, minimum_clearance - fixture.distance_to(shortest_fixture)
-            )
-            p2 = S.Point(
-                shortest_fixture.params.max_avail_extrusion_height,
-                minimum_clearance
-                - shortest_fixture.distance_to(
-                    fixture, at=shortest_fixture.params.max_avail_extrusion_height
-                ),
-            )
-
-            # Create an eq. in terms height and the resulting clearance.
-            slope = (p2.y - p1.y) / (p2.x - p1.x)
-            x = S.symbols("x")
-            f_height_to_clearance = (slope * x) + fixture.extrusion_height
-            # Now solve for the minimum clearance.
-            optimal_height = float(S.solve(S.Eq(minimum_clearance, f_height_to_clearance))[0])
-
-            for adjusted in siblings_by_edge_length:
-                logger.warning(
-                    "[{}] overlap lengthen adjustment made (height {} -> {})",
-                    adjusted.name,
-                    adjusted.extrusion_height,
-                    optimal_height,
-                )
-                adjusted.extrusion_height = optimal_height
-                processed.add(adjusted.name)
-                yield adjusted
+        return list(_fixtures.values())
 
     def build_fixtures(self) -> "Joint":
         for fix in self.construct_fixtures():
+            logger.info("building [{}]", fix.name)
             fix.assemble()
             self.fixtures.append(fix)
         return self
