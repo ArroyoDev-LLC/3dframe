@@ -39,21 +39,16 @@ class Joint(JointMeta):
             raise RuntimeError("Fixtures have not been computed yet!")
         return [f for f in group if f.name != fixture.name]
 
-    def find_overlapping_fixtures(
-        self, source: "FixtureMeta", fixtures: List["FixtureMeta"]
-    ) -> Iterator["FixtureMeta"]:
-        """Locate and yield fixtures that overlap with `source.`"""
-        others = [f for f in fixtures if f.params.label != source.params.label]
-        for other in others:
-            angle_bet = source.params.angle_between(other.params)
-            logger.info(
-                "fixture angle between: [{}] <-> [{}] @ {}", source.name, other.name, angle_bet
-            )
-            if angle_bet <= 30:
-                logger.warning(
-                    "fixture [{}] overlaps with [{}] @ {} deg.", source.name, other.name, angle_bet
-                )
-                yield other
+    @Timer(name="build>compute_fixture_meshes", logger=logger.trace)
+    def compute_fixture_meshes(
+        self, fixtures: List["Fixture"]
+    ) -> List[Tuple[str, utils.SerializableMesh, FixtureMeshType]]:
+        tasks = []
+        for f in fixtures:
+            tasks += [(f, FixtureMeshType.HOLE), (f, FixtureMeshType.SHELL)]
+        with Pool() as pool:
+            _fixtures = list(pool.starmap(Fixture.serialize_mesh, tasks))
+        return _fixtures
 
     def construct_fixtures(self) -> Iterator["FixtureMeta"]:
         params = self.build_fixture_params()
