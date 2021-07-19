@@ -357,6 +357,18 @@ class Fixture(FixtureMeta):
     def shell_mesh(self) -> o3d.geometry.TriangleMesh:
         return self._lazy_mesh(FixtureMeshType.SHELL)
 
+    def extend_fixture_base(self, offset: Union[int, float]):
+        """Extend fixture extrusion height."""
+        prev_sup_wall_pt = self.support_endpoint.copy()
+        self.extrusion_height += offset
+        logger.info("[{}] extending base: +{}mm -> {}mm", self.name, offset, self.extrusion_height)
+        vec_diff = self.support_endpoint - prev_sup_wall_pt
+        rel_vec = np.asarray(list(vec_diff), dtype=np.float64)
+        logger.debug("[{}] relatively translated meshes by {}", self.name, rel_vec)
+        for mesh_t in FixtureMeshType.__members__.values():
+            if self.meshes[mesh_t] is not None:
+                self.meshes[mesh_t] = self.meshes[mesh_t].translate(rel_vec, relative=True)
+
 @attr.s(auto_attribs=True)
 class SolidFixture(Fixture):
     def create_base(self) -> OpenSCADObject:
