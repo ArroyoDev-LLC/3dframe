@@ -57,7 +57,7 @@ class ScadMeta(abc.ABC):
 
 @attr.s(auto_attribs=True)
 class FixtureMeta(ScadMeta, abc.ABC):
-    params: "FixtureParams" = ...
+    params: "FixtureParams" = attr.ib(..., repr=False)
 
     _extrusion_height: Optional[float] = attr.ib(None, init=False)
 
@@ -163,7 +163,7 @@ class CoreMeta(ScadMeta, abc.ABC):
 
 @attr.s(auto_attribs=True)
 class LabelMeta(ScadMeta, abc.ABC):
-    params: "LabelParams" = ...
+    params: "LabelParams" = attr.ib(..., repr=False)
 
     def create_base(self) -> OpenSCADObject:
         _params = self.params.dict()
