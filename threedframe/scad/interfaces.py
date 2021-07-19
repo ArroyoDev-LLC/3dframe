@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 @attr.s(auto_attribs=True)
 class ScadMeta(abc.ABC):
-    scad_object: Optional[OpenSCADObject] = None
+    scad_object: Optional[OpenSCADObject] = attr.ib(None, init=False, repr=False)
 
     @property
     @abc.abstractmethod
