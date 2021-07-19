@@ -1,18 +1,19 @@
-from typing import TYPE_CHECKING, List, Type, Iterator, Optional
+import itertools
+from typing import TYPE_CHECKING, Set, Dict, List, Type, Tuple, Iterator, Optional
+from multiprocessing import Pool
 
 import attr
 import solid as sp
-import sympy as S
 import solid.extensions.bosl2.std as bosl2
 from loguru import logger
+from codetiming import Timer
 
 from threedframe import utils
-from threedframe.config import config
 from threedframe.scad.interfaces import JointMeta, LabelMeta
 
 from .core import Core
 from .label import CoreLabel, FixtureLabel
-from .fixture import Fixture, FixtureParams
+from .fixture import Fixture, FixtureParams, FixtureMeshType
 
 if TYPE_CHECKING:
     from .interfaces import CoreMeta, FixtureMeta
@@ -146,7 +147,7 @@ class JointSingleFixtureDebug(JointLabelDebug):
 
 class JointFixturesOnly(Joint):
     def assemble(self):
-        self.build_fixtures()
+        self.build_fixtures().build_core()
         color_gen = utils.rand_color_generator()
         f_color = next(color_gen)
         self.scad_object = sp.color(c=f_color, alpha=0.4)(self.fixtures[0].scad_object)
