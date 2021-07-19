@@ -336,6 +336,14 @@ class Fixture(FixtureMeta):
             self.meshes[mesh_type] = getattr(self, f"create_{mesh_type}_mesh")()
         return self.meshes[mesh_type]
 
+    @staticmethod
+    def serialize_mesh(
+        fixture: "Fixture", mesh_type: FixtureMeshType
+    ) -> Tuple[str, utils.SerializableMesh, FixtureMeshType]:
+        attr_name = f"create_{mesh_type}_mesh"
+        mesh = getattr(fixture, attr_name)()
+        fixture.meshes[mesh_type] = mesh
+        return fixture.name, utils.SerializableMesh(mesh), mesh_type
 
     @property
     def base_mesh(self) -> o3d.geometry.TriangleMesh:
