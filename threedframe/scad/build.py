@@ -1,9 +1,9 @@
-from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, Type, Union, Optional, Sequence
 from pathlib import Path
 from multiprocessing import Pool
 
 import attr
+import open3d as o3d
 import psutil
 from loguru import logger
 from pydantic import BaseModel, validator, parse_file_as
@@ -11,6 +11,7 @@ from codetiming import Timer
 
 from threedframe import utils
 from threedframe.models import ModelData, ModelVertex
+from threedframe.constant import RenderFileType
 from threedframe.scad.joint import Joint
 
 from ..config import config
@@ -71,6 +72,9 @@ class JointDirectorParams(BaseModel):
 @attr.s(auto_attribs=True)
 class JointDirector:
     params: JointDirectorParams
+    joints: Dict["ModelVertex", "JointMeta"] = attr.ib(factory=dict)
+    scad_paths: Dict["ModelVertex", Path] = attr.ib(factory=dict)
+    render_paths: Dict["ModelVertex", Path] = attr.ib(factory=dict)
 
     @property
     def builder_params(self) -> Dict[str, Any]:
