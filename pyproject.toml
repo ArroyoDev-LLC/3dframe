@@ -25,7 +25,7 @@ include = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = ">=3.8,<3.10"
 # docs extras
 sphinx = { version = "^3.4.3", optional = true }
 sphinx-autodoc-typehints = { version = "^1.11.1", optional = true }
@@ -44,6 +44,7 @@ typer = {version = "^0.3.2", extras = ["all"]}
 psutil = "^5.8.0"
 solidpython = {git = "https://github.com/jeff-dh/SolidPython.git", rev = "exp_solid"}
 ply = "^3.11"
+open3d = "^0.13.0"
 
 [tool.poetry.dev-dependencies]
 autoflake = "^1.4"
