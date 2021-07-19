@@ -1,5 +1,5 @@
 import abc
-from typing import TYPE_CHECKING, Dict, List, Type, Iterator, Optional
+from typing import TYPE_CHECKING, List, Type, Iterator, Optional
 from pathlib import Path
 
 import attr
@@ -13,7 +13,7 @@ from threedframe.constant import Constants
 
 if TYPE_CHECKING:
     from .label import LabelParams
-    from ..models import MeshData, ModelVertex
+    from ..models import ModelVertex
     from .fixture import FixtureParams
 
 
@@ -182,7 +182,6 @@ class LabelMeta(ScadMeta, abc.ABC):
 
 @attr.s(auto_attribs=True)
 class JointMeta(ScadMeta, abc.ABC):
-    meshes: Dict[str, "MeshData"] = attr.ib(init=False, default={})
     core: "CoreMeta" = attr.ib(init=False)
     fixtures: List["FixtureMeta"] = attr.ib(init=False, default=[])
     solid_fixtures: List["FixtureMeta"] = attr.ib(init=False, default=[])
@@ -209,10 +208,6 @@ class JointMeta(ScadMeta, abc.ABC):
     @property
     def has_solid_fixtures(self) -> bool:
         return any(self.solid_fixtures)
-
-    @property
-    def has_meshes(self) -> bool:
-        return any(self.meshes)
 
     @abc.abstractmethod
     def build_fixture_params(self) -> Iterator["FixtureParams"]:
