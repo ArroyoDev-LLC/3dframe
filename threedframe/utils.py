@@ -7,13 +7,15 @@ import random
 import shutil
 import itertools
 import subprocess as sp
-from typing import List, Tuple, Union, Callable, Iterator, Optional, Sequence
+import collections
+from typing import Dict, List, Tuple, Union, Callable, Iterator, Optional, Sequence, DefaultDict
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import numpy as np
 import solid
 import sympy as S
+import open3d as o3d
 import solid.extensions.legacy.utils as sutils
 from rich import print
 from solid import text, union, resize, translate, scad_render, linear_extrude
@@ -419,6 +421,28 @@ def rotate_about_pt(obj: OpenSCADObject, z: float, y: float, pt: GeomType):
     """
     _pt = euclidify(pt)
     return solid.translate(_pt)(solid.rotate((0, y, z))(solid.translate(-_pt)(obj)))
+
+
+class SerializableMesh:
+    """Serializable Open3D mesh.
+
+    Extended from:
+        https://github.com/intel-isl/Open3D/issues/218#issuecomment-842918641
+    """
+
+    def __init__(self, mesh: o3d.geometry.TriangleMesh):
+        self.vertices = np.asarray(mesh.vertices)
+        self.triangles = np.asarray(mesh.triangles)
+
+    def to_open3d(self, do_compute: bool = False) -> o3d.geometry.TriangleMesh:
+        mesh = o3d.geometry.TriangleMesh(
+            vertices=o3d.utility.Vector3dVector(self.vertices),
+            triangles=o3d.utility.Vector3iVector(self.triangles),
+        )
+        if do_compute:
+            mesh.compute_vertex_normals()
+            mesh.compute_triangle_normals()
+        return mesh
 
 
 def _none_factory():
