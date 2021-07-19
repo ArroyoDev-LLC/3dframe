@@ -319,6 +319,17 @@ class Fixture(FixtureMeta):
         obj = self.create_hole_obj()
         return self.compute_mesh(obj)
 
+    def create_base_mesh(self):
+        obj = self.create_base()
+        obj = self.do_transform(obj)
+        return self.compute_mesh(obj)
+
+    def create_shell_mesh(self):
+        obj = self.create_base()
+        obj = self.add_hole(obj)
+        obj = self.subtract_parts(obj)
+        obj = self.do_transform(obj)
+        return self.compute_mesh(obj)
 @attr.s(auto_attribs=True)
 class SolidFixture(Fixture):
     def create_base(self) -> OpenSCADObject:
