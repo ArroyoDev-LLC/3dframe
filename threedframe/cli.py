@@ -275,22 +275,62 @@ def compute(model_path: Path = typer.Argument(..., exists=True, file_okay=True, 
 
 @app.command()
 def shell(
-    model_path: Path = ModelPathArg,
+    model_path: Path = typer.Argument(
+        ..., exists=True, file_okay=True, dir_okay=False, resolve_path=True
+    ),
     scale: Optional[float] = ScaleArg,
     vertex: Optional[str] = typer.Argument(None, help="Vertex to inspect."),
+    build: bool = typer.Option(False, "-b", "--build", help="Build Joint fixtures.", is_flag=True),
+    preview: bool = typer.Option(
+        False, "-p", "--preview", help="Preview fixture output mesh.", is_flag=True
+    ),
 ):
-    config.SUPPORT_SCALE = scale
-    params = JointDirectorParams(model=model_path)
-    director = JointDirector(params=params)
-    joint = None  # noqa
+    print("args:", model_path, scale, vertex)
+    from traitlets.config import Config
+
+    c = Config()
+    exec_lines = [
+        "from rich import inspect",
+        "from pathlib import Path",
+        "import solid as sp",
+        "import open3d as o3d",
+        "from threedframe.config import config",
+        "config.setup_solid()",
+        f"config.SUPPORT_SCALE = {scale}",
+        "from threedframe.scad import *",
+        f"params = JointDirectorParams(model=Path('{model_path}'))",
+        "director = JointDirector(params=params)",
+    ]
     if vertex:
-        vidx = director.params.model.get_vidx_by_label(vertex)
-        vidx = vidx if vidx is not None else vertex
-        vert = director.params.model.vertices[vidx]
-        joint = director.create_joint(vert)  # noqa
+        exec_lines.extend(
+            [
+                f"vidx = director.params.model.get_vidx_by_label('{vertex}')",
+                f"vidx = vidx if vidx is not None else '{vertex}'",
+                "vert = director.params.model.vertices[vidx]",
+                "joint = director.create_joint(vert)",
+            ]
+        )
+        if build:
+            exec_lines.extend(
+                [
+                    "joint.build_fixtures()",
+                    "[print(' - '.join([str(idx), f.name])) for idx, f in enumerate(joint.fixtures)]",
+                ]
+            )
+        if preview:
+            exec_lines.extend(
+                [
+                    "o = sp.union() + [f.scad_object for f in joint.fixtures]",
+                    "om = joint.get_mesh(o)",
+                    "o3d.visualization.draw_geometries([om])",
+                ]
+            )
+    print("exec lines:", exec_lines)
     import IPython  # noqa
 
-    IPython.embed()
+    c.InteractiveShellApp.exec_lines = exec_lines
+    c.InteractiveShellApp.extensions.append("rich")
+    IPython.start_ipython(argv=[], config=c)
 
 
 @app.command()
