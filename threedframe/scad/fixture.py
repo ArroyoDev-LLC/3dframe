@@ -369,6 +369,22 @@ class Fixture(FixtureMeta):
             if self.meshes[mesh_t] is not None:
                 self.meshes[mesh_t] = self.meshes[mesh_t].translate(rel_vec, relative=True)
 
+    def compare_to_other(self, other: "Fixture") -> Tuple[float, float]:
+        angle_bet = self.params.angle_between(other.params)
+        dist_between = self.support_endpoint.distance(other.support_endpoint)
+        logger.debug(
+            "[{}] <-> [{}] @ {:.2f}deg & {:.2f}mm", self.name, other.name, angle_bet, dist_between
+        )
+        return angle_bet, dist_between
+
+    def does_intersect_other_support(self, other: "Fixture") -> bool:
+        do_intersect = self.shell_mesh.is_intersecting(other.hole_mesh)
+        logger.info(
+            "intersection in Base[{}] & Hole[{}] -> {}", self.name, other.name, do_intersect
+        )
+        return do_intersect
+
+
 @attr.s(auto_attribs=True)
 class SolidFixture(Fixture):
     def create_base(self) -> OpenSCADObject:
