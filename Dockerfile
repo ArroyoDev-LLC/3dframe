@@ -134,7 +134,7 @@ RUN cd /usr/share/fonts/truetype \
 WORKDIR /app/
 COPY . /app/
 
-RUN pip install --no-cache-dir -e /app/ \
+RUN pip install --no-cache-dir /app/ \
   && mkdir -p /app/renders \
   && chown -R threedframe: /app \
   && chmod -R u+rwx /app \
