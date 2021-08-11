@@ -340,7 +340,7 @@ def shell(
                 "joint = director.create_joint(vert)",
             ]
         )
-        if build:
+        if preview or build:
             exec_lines.extend(
                 [
                     "joint.build_fixtures()",
@@ -351,7 +351,7 @@ def shell(
             exec_lines.extend(
                 [
                     "o = sp.union() + [f.scad_object for f in joint.fixtures]",
-                    "om = joint.get_mesh(o)",
+                    "om = joint.compute_mesh(o)",
                     "o3d.visualization.draw_geometries([om])",
                 ]
             )
