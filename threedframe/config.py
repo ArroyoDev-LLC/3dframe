@@ -3,7 +3,7 @@
 import shutil
 from pathlib import Path
 
-from pydantic import BaseSettings, validator
+from pydantic import BaseSettings
 from solid.config import config as SolidConfig
 from solid.extensions.scad_interface import ScadInterface
 
@@ -19,12 +19,7 @@ class _Config(BaseSettings):
     RENDERS_DIR: Path = Path("renders")
     CI: bool = False
 
-    @validator("RENDERS_DIR")
-    def validate_renders_dir(cls, v: Path) -> Path:
-        v.mkdir(exist_ok=True)
-        return v
-
-    ## Log Config
+    # Log Config
     LOG_BASE_FMT: str = "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan>"
 
     # OpenSCAD Poly Segments.
@@ -38,6 +33,7 @@ class _Config(BaseSettings):
 
     def setup_solid(self):
         self.create_lib_dir()
+        self.RENDERS_DIR.mkdir(exist_ok=True, parents=True)
         SolidConfig.enable_pickle_cache = not self.CI
 
     def set_solid_caching(self, enabled: bool = True):
