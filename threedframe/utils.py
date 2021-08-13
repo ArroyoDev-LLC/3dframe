@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """3DFrame Model Generator Utils."""
+import os
 import sys
 import time
 import random
@@ -101,23 +102,23 @@ def openscad_cmd(*args) -> sp.Popen:
 
 def exec_blender_script(model_path: Path, script_path: Path, out_path: Path):
     """Execute blender command."""
+    blender_path = locate_executable("blender") or "/usr/local/blender/blender"
     _cmd = [
-        str(locate_executable("blender")),
+        str(blender_path),
         str(model_path.absolute()),
         "--background",
         "--python-use-system-env",
         "--python",
         str(script_path.absolute()),
     ]
-    py_path = ":".join(sys.path)
     _cmd_env = dict(
         THREEDFRAME_OUT=str(out_path.absolute()),
-        PYTHONPATH=py_path,
-        BLENDER_SYSTEM_PYTHON=sys.executable,
     )
-    print(_cmd_env)
+    cmd_env = os.environ.copy()
+    cmd_env.update(_cmd_env)
+    print(cmd_env)
     print(sys.path)
-    return sp.run(_cmd, check=True, env=_cmd_env)
+    return sp.run(_cmd, check=True, env=cmd_env)
 
 
 def write_scad(element: OpenSCADObject, path: Path, segments=48, header: Optional[str] = None):
