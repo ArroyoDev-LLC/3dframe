@@ -39,7 +39,7 @@ def edge_angle(e1, e2, face_normal):
     return pi - atan2(a.cross(c), a.dot(c))
 
 
-obj_data = bpy.data.objects["CyberTruck"].data
+obj_data = bpy.context.active_object.data
 vertex_map: Dict[int, list] = {}
 
 bm = bmesh.from_edit_mesh(obj_data)
