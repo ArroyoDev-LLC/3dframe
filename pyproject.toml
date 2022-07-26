@@ -42,7 +42,7 @@ pydantic = "^1.8.1"
 loguru = "^0.5.3"
 typer = {version = "^0.3.2", extras = ["all"]}
 psutil = "^5.8.0"
-solidpython = {git = "https://github.com/jeff-dh/SolidPython.git", rev = "exp_solid"}
+solidpython = {git = "https://github.com/jeff-dh/SolidPython.git", rev = "cddfbe6c1c059c45cb5bf9a4fc94e99771bd5d73"}
 ply = "^3.11"
 open3d = "^0.13.0"
 
