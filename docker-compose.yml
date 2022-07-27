@@ -3,7 +3,7 @@ x-3dframe: &3dframe-defaults
     tty: true
     privileged: true
     # init: true
-    build:
+    build: &3dframe-build
         context: .
         target: workspace
         args:
@@ -20,6 +20,7 @@ x-3dframe: &3dframe-defaults
     volumes:
         - /tmp/.X11-unix:/tmp/.X11-unix
         - ./threedframe:/app/threedframe
+        - ./tests:/app/tests
         - ./data:/data/models
         - ./renders:/data/renders
         - ./.direnv/ipython:/data/.ipython
@@ -37,3 +38,10 @@ services:
         <<: *3dframe-util
         entrypoint: ["/docker-entrypoint.sh"]
         command: ["bash"]
+
+    test:
+        <<: *3dframe-util
+        image: ghcr.io/arroyodev-llc/threedframe:test
+        build:
+            <<: *3dframe-build
+            target: test-runner
