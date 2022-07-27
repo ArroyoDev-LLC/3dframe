@@ -1,147 +1,150 @@
-FROM python:3.8 AS build
+# syntax=docker/dockerfile:1
+ARG PYTHON_BASE_TAG="3.9.13-bullseye"
+ARG DEBIAN_BASE_TAG="bullseye-20220711-slim"
+#################
+## Python Base
+################
+FROM python:${PYTHON_BASE_TAG} AS python-base
 
-# Python Envs
+ARG APP_NAME=threedframe
+ARG APP_PATH=/app/$APP_NAME
+
+ARG PYTHON_VERSION=3.9.13
+ARG POETRY_VERSION=1.2.0b3
+
+# Python Env
 ENV PYTHONFAULTHANDLER=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONHASHSEED=random \
     PIP_NO_CACHE_DIR=off \
     PIP_DISABLE_PIP_VERSION_CHECK=on \
     PIP_DEFAULT_TIMEOUT=100
 
+ARG DATA_DIR=/data \
+    RENDERS_DIR=${DATA_DIR}/renders
+ARG MODELS_DIR=${DATA_DIR}/models
+
+ENV DATA_DIR=${DATA_DIR} \
+    RENDERS_DIR=${RENDERS_DIR} \
+    MODELS_DIR=${MODELS_DIR}
+
+# Poetry Env
+ENV POETRY_VERSION=${POETRY_VERSION} \
+    POETRY_VIRTUALENVS_IN_PROJECT=true \
+    POETRY_NO_INTERACTION=1 \
+    POETRY_HOME=${DATA_DIR}/poetry
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
 # Install Poetry
-RUN curl -sSL https://raw.githubusercontent.com/python-poetry/poetry/master/get-poetry.py | POETRY_HOME=/opt/poetry python && \
-    cd /usr/local/bin && \
-    ln -s /opt/poetry/bin/poetry && \
-    poetry config virtualenvs.create false
+RUN curl -sSL https://install.python-poetry.org | python -
+ENV PATH="${DATA_DIR}/poetry/bin:$PATH"
 
-WORKDIR /app/
-COPY pyproject.toml poetry.lock /app/
-
-# Build wheel.
-RUN bash -c "poetry export --without-hashes -o requirements.txt --dev && pip install -U pip && mkdir -p dist && pip wheel -w dist -r requirements.txt"
-
-
-WORKDIR /wheels
-RUN bash -c "cp /app/dist/* /wheels/ && cp /app/requirements.txt /wheels/ && rm -rf /app"
-
-
-### Base sys-library dependencies.
-FROM python:3.8-buster as deps
-
-ARG NUM_CORES=4
-ENV NUMCPU $NUM_CORES
-
-# Open3D + OpenSCAD + Blender deps
-RUN curl -L -o /get-oscad-deps.sh https://raw.githubusercontent.com/openscad/openscad/openscad-2021.01/scripts/uni-get-dependencies.sh \
-    && curl -L -o /check-oscad-deps.sh https://raw.githubusercontent.com/openscad/openscad/openscad-2021.01/scripts/check-dependencies.sh \
-    && chmod +x /get-oscad-deps.sh && chmod +x /check-oscad-deps.sh \
-    && apt-get update && apt-get install -y --no-install-recommends \
-        gcc \
-        g++ \
-        git \
-        cmake \
-        libgmp-dev \
-        libmpfr-dev \
-        libgmpxx4ldbl \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        xorg-dev \
+        libglu1-mesa-dev \
+        libosmesa6-dev \
+        # openscad runtime.
         libboost-dev \
-        libboost-thread-dev \
-        zip unzip patchelf \
-        # Open3D specific
-        libgl1 \
-        libgomp1 \
-        libusb-1.0-0 \
-        # Blender specific
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+
+WORKDIR /app
+COPY pyproject.toml poetry.lock ./
+
+
+#################
+## Debian Base
+################
+FROM debian:${DEBIAN_BASE_TAG} AS debian-base
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        git \
         curl \
-        libfreetype6 \
-        libglu1-mesa \
-        libxi6 \
-        libxrender1 \
+        ca-certificates \
         xz-utils \
-        # OpenSCAD specific
-        libunistring-dev \
-        libglib2.0 \
-        libharfbuzz-dev \
-     && /get-oscad-deps.sh \
-     && /check-oscad-deps.sh \
-     && apt-get clean \
-     && rm -rf /var/lib/apt/lists/*
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 
-### Compile OpenSCAD
-FROM deps as openscad
+#################
+## OpenScad
+################
+FROM debian-base as openscad
 
-ARG NUM_CORES=4
-ENV NUMCPU $NUM_CORES
+ARG OPENSCAD_REPO="https://github.com/openscad/openscad.git"
+ARG OPENSCAD_REV="openscad-2021.01"
 
-RUN git clone --branch openscad-2021.01 https://github.com/openscad/openscad.git /openscad-src \
-    && cd /openscad-src \
-    && git submodule update --init \
+RUN git clone --branch=${OPENSCAD_REV} ${OPENSCAD_REPO} /openscad \
+    && git -C /openscad submodule update --init
+WORKDIR /openscad
+
+RUN apt-get update \
+    && ./scripts/uni-get-dependencies.sh \
     && ./scripts/check-dependencies.sh \
-    && qmake openscad.pro \
-    && make --jobs="${NUMCPU}" \
-    && cp ./openscad /openscad \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
-    && rm -rf /openscad-src
+    && mkdir build
+WORKDIR /openscad/build
+
+RUN cmake .. -DEXPERIMENTAL=1 \
+    && make -j
 
 
-### Download Blender.
-FROM deps as blender
+#################
+## Blender
+################
+FROM debian-base as blender
+
+ARG BLENDER_MAJOR=2.92 \
+    BLENDER_VERSION=2.92.0 \
+    BLENDER_ARCH=linux64
+
+ENV BLENDER_URL=https://download.blender.org/release/Blender${BLENDER_MAJOR}/blender-${BLENDER_VERSION}-${BLENDER_ARCH}.tar.xz \
+    BLENDER_ARCHIVE_DIR=/blender-archive/${BLENDER_VERSION}-${BLENDER_ARCH}
 
 # Install blender.
-ENV BLENDER_MAJOR 2.92
-ENV BLENDER_VERSION 2.92.0
-ENV BLENDER_URL https://download.blender.org/release/Blender${BLENDER_MAJOR}/blender-${BLENDER_VERSION}-linux64.tar.xz
-RUN curl -L ${BLENDER_URL} | tar -xJ -C /usr/local/ && \
-	mv /usr/local/blender-${BLENDER_VERSION}-linux64 /blender
+RUN --mount=type=cache,id=blender-archive,target=/blender-archive \
+    mkdir -p ${BLENDER_ARCHIVE_DIR} \
+    && curl -L -o ${BLENDER_ARCHIVE_DIR}/blender.tar.xz ${BLENDER_URL} \
+    && tar -xf ${BLENDER_ARCHIVE_DIR}/blender.tar.xz -C /usr/local/ \
+    && ln -s /usr/local/blender-${BLENDER_VERSION}-${BLENDER_ARCH} /blender
 
 
-### 3dframe App
-FROM deps AS app
+#################
+## Workspace
+################
+FROM python-base as workspace
+
+ARG USER_UID=1000
+ARG USER_GID=1000
+ARG USER_NAME=threedframe
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# Setup threedframe user.
+RUN groupadd --gid $USER_GID --system ${USER_NAME} \
+    && useradd --uid ${USER_UID} --system --gid ${USER_GID} --home-dir ${DATA_DIR} ${USER_NAME} \
+    && mkdir -p ${RENDERS_DIR} ${MODELS_DIR} \
+    && chown -R ${USER_UID}:${USER_GID} ${DATA_DIR} /app
+
+USER threedframe
+
+RUN ${POETRY_HOME}/bin/poetry install --no-root --no-cache
 
 # Copy OpenSCAD & Blender binaries
-COPY --from=openscad /openscad /usr/local/bin/openscad
+COPY --from=openscad /openscad/build/openscad /usr/local/bin/openscad
 COPY --from=blender /blender /usr/local/blender
 
-# Copy dependencies.
-COPY --from=build /wheels /wheels
+COPY . .
 
+RUN ${POETRY_HOME}/bin/poetry install --only-root --no-cache
 
-ENV UID 1000
-
-# Container user.
-# Create User
-RUN useradd \
-  --non-unique \
-  --no-create-home \
-  --no-user-group \
-  --home-dir /app \
-  --uid ${UID:-1000} \
-  threedframe \
-  # Install dependencies from wheels
-  && pip install --no-cache-dir -U pip \
-  && pip install --no-cache-dir -f /wheels/ -r /wheels/requirements.txt \
-  && rm -rf /wheels
-
-# Install needed fonts.
-RUN cd /usr/share/fonts/truetype \
- && curl -o opensans.zip -L https://fonts.google.com/download?family=Open%20Sans \
- && unzip -d opensans opensans.zip \
- && rm opensans.zip \
- && fc-cache -f -v
-
-
-WORKDIR /app/
-COPY . /app/
-
-RUN pip install --no-cache-dir /app/ \
-  && mkdir -p /app/renders \
-  && chown -R threedframe: /app \
-  && chmod -R u+rwx /app \
-  && mkdir -p /app/.local/share/expSolidPython \
-  && chown -R threedframe /app/.local \
-  && chmod -R a+rwx /app/.local
-
-
-ENTRYPOINT /bin/bash
-CMD ['3dframe']
+COPY ./scripts/docker-entrypoint.sh /docker-entrypoint.sh
+VOLUME [ $APP_PATH $RENDERS_DIR $MODELS_DIR ]
+ENTRYPOINT [ "/docker-entrypoint.sh", "poetry", "run", "threedframe/cli.py" ]
+CMD ["--help"]
