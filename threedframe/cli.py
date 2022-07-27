@@ -94,6 +94,15 @@ VerticesArg: Optional[List[str]] = typer.Option(
 )
 ScaleArg: Optional[float] = typer.Option(1.0, "-s", "--scale", help="Support size scale.")
 
+RendersDirOpt: Path = typer.Option(
+    None,
+    "--renders-dir",
+    file_okay=False,
+    dir_okay=True,
+    help="Directory to save rendered files too.",
+    envvar="3DFRAME_RENDERS_DIR",
+)
+
 
 @app.command()
 def generate(
@@ -105,6 +114,7 @@ def generate(
     render: Optional[bool] = typer.Option(
         False, "-r", "--render", help="Render mesh.", is_flag=True
     ),
+    renders_dir=RendersDirOpt,
     preview: bool = typer.Option(
         False, "-p", "--preview", help="Preview fixture output mesh. Implies render.", is_flag=True
     ),
@@ -124,6 +134,8 @@ def generate(
         typer.confirm("Are you sure you want to render ALL vertices?", abort=True)
         vertices = None  # indicates all in director params.
     config.SUPPORT_SCALE = scale
+    if renders_dir:
+        config.RENDERS_DIR = Path(renders_dir)
     if no_cache:
         config.set_solid_caching(False)
     params = JointDirectorParams(
