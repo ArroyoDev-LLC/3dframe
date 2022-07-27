@@ -134,7 +134,7 @@ RUN groupadd --gid $USER_GID --system ${USER_NAME} \
 
 USER threedframe
 
-RUN ${POETRY_HOME}/bin/poetry install --no-root --no-cache
+RUN ${POETRY_HOME}/bin/poetry install --no-root
 
 # Copy OpenSCAD & Blender binaries
 COPY --from=openscad /openscad/build/openscad /usr/local/bin/openscad
@@ -142,9 +142,18 @@ COPY --from=blender /blender /usr/local/blender
 
 COPY . .
 
-RUN ${POETRY_HOME}/bin/poetry install --only-root --no-cache
+RUN ${POETRY_HOME}/bin/poetry install --only-root
 
 COPY ./scripts/docker-entrypoint.sh /docker-entrypoint.sh
 VOLUME [ $APP_PATH $RENDERS_DIR $MODELS_DIR ]
 ENTRYPOINT [ "/docker-entrypoint.sh", "poetry", "run", "threedframe/cli.py" ]
 CMD ["--help"]
+
+
+#################
+## Test Runner
+################
+FROM workspace as test-runner
+RUN ${POETRY_HOME}/bin/poetry install --with=test
+ENTRYPOINT [ "/docker-entrypoint.sh", "poetry", "run" ]
+CMD ["pytest"]
