@@ -1,7 +1,7 @@
 from typing import Optional
 
 import attr
-import solid.extensions.bosl2.std as bosl2
+import solid.extensions.bosl2 as bosl2
 
 from threedframe.scad.interfaces import CoreMeta
 
@@ -24,4 +24,4 @@ class Core(CoreMeta):
         return f"core-{source}"
 
     def assemble(self):
-        self.scad_object = bosl2.hulling("fix_fillet")(*[f.scad_object for f in self.fixtures])
+        self.scad_object = bosl2.conv_hull("fix_fillet")(*[f.scad_object for f in self.fixtures])
