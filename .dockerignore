@@ -24,6 +24,7 @@ renders_old
 renders
 Dockerfile
 .local
+.venv
 
 # Don't ignore
 !pyproject.toml
