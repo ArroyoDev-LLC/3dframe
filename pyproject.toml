@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Generate printable joints to create a real puzzle from any 3d model."
 authors = ["Braden Mars <bradenmars@bradenmars.me>"]
 license = "MIT license"
-packages = [{ include = "threedframe", from = "." }]
+packages = [{ include = "threedframe" }]
 
 readme = "README.md"
 homepage = "https://github.com/BradenM/threedframe"
@@ -24,71 +24,70 @@ include = [
     "README.md", "LICENSE",
 ]
 
+
+[tool.poetry.scripts]
+3dframe = 'threedframe.cli:app'
+
 [tool.poetry.dependencies]
 python = ">=3.8,<3.10"
 # docs extras
-sphinx = { version = "^3.4.3", optional = true }
-sphinx-autodoc-typehints = { version = "^1.11.1", optional = true }
-recommonmark = { version = "^0.7.1", optional = true }
-sphinx_rtd_theme = { version = "^0.5.1", optional = true }
+# sphinx = { version = "^3.4.3", optional = true }
+# sphinx-autodoc-typehints = { version = "^1.11.1", optional = true }
+# recommonmark = { version = "^0.7.1", optional = true }
+# sphinx_rtd_theme = { version = "^0.5.1", optional = true }
 # main
-rich = "^9.10.0"
+rich = "^12.5.1"
 numpy = "^1.19.5"
 watchdog = "^1.0.2"
 vg = "^1.9.0"
 sympy = "^1.7.1"
 attrs = "^21.2.0"
-pydantic = "^1.8.1"
+pydantic = {version = "^1.9.1", extras = ["dotenv"]}
 loguru = "^0.5.3"
-typer = {version = "^0.3.2", extras = ["all"]}
+typer = {version = "^0.6.1", extras = ["all"]}
 psutil = "^5.8.0"
 solidpython = {git = "https://github.com/jeff-dh/SolidPython.git", rev = "cddfbe6c1c059c45cb5bf9a4fc94e99771bd5d73"}
 ply = "^3.11"
-open3d = "^0.13.0"
+open3d = "^0.15.2"
+codetiming = "^1.3.0"
+euclid3 = "^0.01"
+sh = "^1.14.3"
+devtools = {version = "^0.8.0", extras = ["pygments"]}
+typing-extensions = "^4.3.0"
 
-[tool.poetry.dev-dependencies]
+
+[tool.poetry.group.dev.dependencies]
 autoflake = "^1.4"
-flake8 = "^3.7"
+flake8 = "^4.0.1"
 isort = "^5.7.0"
-rope = "^0.18.0"
-mypy = "^0.800"
-pytest = "^6.2.2"
-pytest-cov = "^2.11.1"
+rope = "^1.2.0"
+docformatter = "^1.4"
+mypy = "^0.971"
+pre-commit = "^2.10.0"
+"fake-bpy-module-2.91" = "^20220615"
+pdbpp = "^0.10.2"
+hypothesis = {version = "^6.13.1", extras = ["cli", "codemods"]}
+ipython = "^8.4.0"
+
+
+[tool.poetry.group.test]
+optional = true
+
+[tool.poetry.group.test.dependencies]
+pytest = "^7.1.2"
+pytest-cov = "^3.0.0"
 pytest-mock = "^3.5.1"
 pytest-testmon = "^1.0"
 pytest-watch = "^4.2"
-pytest-xdist = "^1.30"
-docformatter = "^1.4"
-pre-commit = "^2.10.0"
+pytest-xdist = "^2.5.0"
 pytest-sugar = "^0.9.4"
-"fake-bpy-module-2.91" = "^20201216"
 snapshottest = "^0.6.0"
-sh = "^1.14.1"
-pdbpp = "^0.10.2"
-ipython = "^7.22.0"
-jedi = "<0.18.0"
-devtools = {version = "^0.6.1", extras = ["pygments"]}
-codetiming = "^1.3.0"
-hypothesis = {version = "^6.13.1", extras = ["cli", "codemods"]}
-argh = "^0.26.2"
 
-
-[tool.poetry.extras]
-docs = ["sphinx", "sphinx-autodoc-typehints", "recommonmark", "sphinx_rtd_theme"]
-
-
-[tool.poetry.scripts]
-3dframe = 'threedframe.cli:app'
-
-
-[tool.dephell.main]
-from = { format = "poetry", path = "pyproject.toml" }
-to = { format = "setuppy", path = "setup.py" }
 
 [tool.black]
 line-length = 100
 skip-string-normalization = false
-target-version = ['py38']
+target-version = ['py39']
 include = '\.pyi?$'
 exclude = '''
 (
@@ -127,5 +126,5 @@ addopts = "-ra -vv"
 source = "threedframe"
 
 [build-system]
-requires = ["setuptools>=30.3.0,<50","poetry>=1.0.0"]
-build-backend = "poetry.masonry.api"
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
