@@ -4,7 +4,7 @@ from multiprocessing import Pool
 
 import attr
 import solid as sp
-import solid.extensions.bosl2.std as bosl2
+import solid.extensions.bosl2 as bosl2
 from loguru import logger
 from codetiming import Timer
 
