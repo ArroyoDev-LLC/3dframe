@@ -125,7 +125,8 @@ def write_scad(element: OpenSCADObject, path: Path, segments=48, header: Optiona
     scad_int = ScadInterface()
     file_header = header or f"$fn = {segments};"
     scad_int.additional_header_code(file_header)
-    out_render = scad_render(element, scad_interface=scad_int)
+    # out_render = scad_render(element, scad_interface=scad_int)
+    out_render = scad_render(element)
     logger.info("Writing scad to: {}", path)
     path.write_text(out_render)
     return out_render
