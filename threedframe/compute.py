@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 """Gathers all vectors + angels from blender model."""
 import os
 from math import pi, atan2
