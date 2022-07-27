@@ -47,7 +47,8 @@ RUN apt-get update \
         libglu1-mesa-dev \
         libosmesa6-dev \
         # openscad runtime.
-        libboost-dev \
+        libboost-all-dev \
+        libdouble-conversion3 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -116,9 +117,21 @@ RUN --mount=type=cache,id=blender-archive,target=/blender-archive \
 
 
 #################
+## App Base
+################
+FROM python-base as base
+COPY --from=openscad /openscad/scripts/uni-get-dependencies.sh /get-oscad-deps.sh
+RUN apt-get update \
+    && /get-oscad-deps.sh \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm /get-oscad-deps.sh
+
+
+#################
 ## Workspace
 ################
-FROM python-base as workspace
+FROM base as workspace
 
 ARG USER_UID=1000
 ARG USER_GID=1000
