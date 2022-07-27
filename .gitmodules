@@ -1,5 +1,0 @@
-[submodule "threedframe/lib/BOSL2"]
-	path = threedframe/lib/BOSL2
-	url = git@github.com:BradenM/BOSL2.git
-[submodule "./threedframe/lib/BOSL2"]
-	branch = fix/atext-font
