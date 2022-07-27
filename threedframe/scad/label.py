@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Dict, Union
 import attr
 import solid as sp
 import sympy as S
-import solid.extensions.bosl2.std as bosl2
+import solid.extensions.bosl2 as bosl2
 import solid.extensions.legacy.utils as sutils
 from euclid3 import Line3 as EucLine3
 from euclid3 import Point3 as EucPoint3
@@ -70,7 +70,7 @@ class FixtureLabel(LabelMeta):
         return f"Label[{self.params.target.name}]"
 
     def create_base(self) -> OpenSCADObject:
-        return bosl2.atext(
+        return bosl2.text3d(
             self.params.content,
             size=self.params.size,
             anchor=bosl2.CENTER,
