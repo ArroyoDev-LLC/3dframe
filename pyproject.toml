@@ -68,6 +68,7 @@ pre-commit = "^2.10.0"
 pdbpp = "^0.10.2"
 hypothesis = {version = "^6.13.1", extras = ["cli", "codemods"]}
 ipython = "^8.4.0"
+black = "^22.6.0"
 
 
 [tool.poetry.group.test]
