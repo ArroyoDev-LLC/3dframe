@@ -7,7 +7,7 @@ import numpy as np
 import solid as sp
 import sympy as S
 import open3d as o3d
-import solid.extensions.bosl2.std as bosl2
+import solid.extensions.bosl2 as bosl2
 import solid.extensions.legacy.utils as sputils
 from loguru import logger
 from euclid3 import Point3 as EucPoint3
