@@ -1,0 +1,39 @@
+x-3dframe: &3dframe-defaults
+    image: ghcr.io/arroyodev-llc/threedframe:latest
+    tty: true
+    privileged: true
+    # init: true
+    build:
+        context: .
+        target: workspace
+        args:
+            BLENDER_MAJOR: 3.2
+            BLENDER_VERSION: 3.2.1
+            BLENDER_ARCH: linux-x64
+    environment:
+        DISPLAY: $DISPLAY
+        WAYLAND_DISPLAY: $WAYLAND_DISPLAY
+        3DFRAME_RENDERS_DIR: /data/renders
+        LD_PRELOAD: /usr/lib/x86_64-linux-gnu/libGL.so
+    devices:
+        - /dev/dri:/dev/dri
+    volumes:
+        - /tmp/.X11-unix:/tmp/.X11-unix
+        - ./threedframe:/app/threedframe
+        - ./data:/data/models
+        - ./renders:/data/renders
+        - ./.direnv/ipython:/data/.ipython
+
+x-3dframe-util: &3dframe-util
+    <<: *3dframe-defaults
+    profiles:
+        - util
+
+services:
+    3dframe:
+        <<: *3dframe-defaults
+
+    shell:
+        <<: *3dframe-util
+        entrypoint: ["/docker-entrypoint.sh"]
+        command: ["bash"]
