@@ -1,6 +1,5 @@
 """3DFrame configuration."""
 
-import shutil
 from pathlib import Path
 
 from pydantic import BaseSettings
@@ -24,34 +23,19 @@ class _Config(BaseSettings):
 
     # OpenSCAD Poly Segments.
     SEGMENTS: int = 48
-    # OpenSCAD Libraries.
-    LIB_DIR: Path = ROOT / "lib"
-    SCAD_LIB_DIR: Path = Path.home() / ".local/share/OpenSCAD/libraries"
 
     def create_log_format(self, fmt: str):
         return self.LOG_BASE_FMT + fmt + " - <level>{message}</level>"
 
     def setup_solid(self):
-        self.create_lib_dir()
         self.RENDERS_DIR.mkdir(exist_ok=True, parents=True)
         SolidConfig.enable_pickle_cache = not self.CI
 
     def set_solid_caching(self, enabled: bool = True):
         SolidConfig.enable_pickle_cache = enabled
 
-    def create_lib_dir(self):
-        """Create library directory.
-
-        Copies 3dframe vendor libs to
-        directories searched by OpenSCAD.
-
-        """
-        self.SCAD_LIB_DIR.mkdir(parents=True, exist_ok=True)
-        shutil.copytree(self.LIB_DIR, self.SCAD_LIB_DIR, dirs_exist_ok=True)
-
     @property
     def scad_header(self) -> str:
-        self.create_lib_dir()
         tmpl = "$fn = {c.SEGMENTS};\ninclude <BOSL2/std.scad>\n"
         return tmpl.format(c=self)
 
