@@ -1,10 +1,16 @@
+from __future__ import annotations
+
 import abc
-from typing import TYPE_CHECKING, List, Type, Iterator, Optional
+from typing import TYPE_CHECKING, List, Type, TypeVar, Callable, Iterator, Optional
 from pathlib import Path
 
 import attr
 import open3d as o3d
+from loguru import logger
 from euclid3 import Point3 as EucPoint3
+from codetiming import Timer
+from boltons.dictutils import OMD
+from typing_extensions import ParamSpec
 from solid.core.object_base import OpenSCADObject
 
 from threedframe import utils
@@ -14,7 +20,24 @@ from threedframe.constant import Constants
 if TYPE_CHECKING:
     from .label import LabelParams
     from ..models import ModelVertex
-    from .fixture import FixtureParams
+    from .fixture import FixtureTag, FixtureParams
+
+T = TypeVar("T")
+P = ParamSpec("P")
+
+
+def scad_timer(f: Callable[P, T]) -> Callable[P, T]:
+    def inner(*args: P.args, **kwargs: P.kwargs) -> T:
+        inst: ScadMeta = args[0]
+        cls_name = inst.__class__.__name__.lower()
+        f_name = f.__name__
+        timer = Timer(name=f"build>{cls_name}>{f_name}", logger=logger.trace)
+        timer.start()
+        result = f(*args, **kwargs)
+        timer.stop()
+        return result
+
+    return inner
 
 
 @attr.s(auto_attribs=True)
@@ -32,12 +55,14 @@ class ScadMeta(abc.ABC):
         """Name of output file if rendered out."""
         return self.name
 
+    @scad_timer
     def render_scad(self, path: Optional[Path] = None) -> Path:
         """Renders `OpenSCADObject` to scad file."""
         _path = path or config.RENDERS_DIR / f"{self.file_name}.scad"
         utils.write_scad(self.scad_object, _path, header=config.scad_header)
         return _path
 
+    @scad_timer
     def compute_mesh(self, obj: Optional[OpenSCADObject] = None) -> o3d.geometry.TriangleMesh:
         """Compute o3d triangle mesh from given scad object."""
         with utils.TemporaryScadWorkspace() as renderer:
@@ -48,6 +73,7 @@ class ScadMeta(abc.ABC):
             )
             mesh.compute_vertex_normals()
             mesh.compute_triangle_normals()
+            mesh.remove_duplicated_vertices()
             return mesh
 
     @abc.abstractmethod
@@ -148,6 +174,7 @@ class FixtureMeta(ScadMeta, abc.ABC):
         oth_at = at or other.extrusion_height
         return self.point_at_distance(_at).distance(other.point_at_distance(oth_at))
 
+    @scad_timer
     def assemble(self):
         obj = self.create_base()
         obj = self.do_extrude(obj)
@@ -157,11 +184,18 @@ class FixtureMeta(ScadMeta, abc.ABC):
 
 @attr.s(auto_attribs=True)
 class CoreMeta(ScadMeta, abc.ABC):
-    fixtures: List["FixtureMeta"] = ...
+    fixtures: List["FixtureMeta"] = attr.ib(...)
 
     @abc.abstractmethod
     def assemble(self):
         raise NotImplementedError
+
+    @property
+    def fixture_tags(self) -> OMD[FixtureTag, str]:
+        tags = OMD()
+        for fixture in self.fixtures:
+            tags.update_extend(fixture.params.tags)
+        return tags
 
 
 @attr.s(auto_attribs=True)
@@ -177,6 +211,7 @@ class LabelMeta(ScadMeta, abc.ABC):
     def do_transform(self, obj: OpenSCADObject) -> OpenSCADObject:
         raise NotImplementedError
 
+    @scad_timer
     def assemble(self):
         obj = self.create_base()
         obj = self.do_transform(obj)
