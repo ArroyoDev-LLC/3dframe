@@ -3,6 +3,7 @@
 """3DFrame Model Generator Utils."""
 import os
 import sys
+import math
 import time
 import random
 import shutil
@@ -465,3 +466,19 @@ def default_nonedict() -> DefaultDict[str, None]:
 
     """
     return collections.defaultdict(_none_factory)
+
+
+def distance3d(a, b):
+    """3D Distance formula.
+
+    AB = sqrt( (x2 - x1)^2 - (y2 - y1)^2 - (z2 - z1)^2 )
+
+    """
+
+    def coord_diff(ca, cb):
+        return pow(cb - ca, 2)
+
+    x = coord_diff(a[0], b[0])
+    y = coord_diff(a[1], b[1])
+    z = coord_diff(a[2], b[2])
+    return math.sqrt(x + y + z)
