@@ -4,12 +4,11 @@ from multiprocessing import Pool
 
 import attr
 import solid as sp
-import solid.extensions.bosl2 as bosl2
 from loguru import logger
 from codetiming import Timer
 
 from threedframe import utils
-from threedframe.scad.interfaces import JointMeta, LabelMeta
+from threedframe.scad.interfaces import JointMeta, LabelMeta, scad_timer
 
 from .core import Core
 from .label import CoreLabel, FixtureLabel
@@ -31,6 +30,7 @@ class Joint(JointMeta):
             params = FixtureParams(source_edge=edge, source_vertex=self.vertex)
             yield params
 
+    @Timer(name="build>joint>get_sibling_fixtures", logger=logger.trace)
     def get_sibling_fixtures(
         self, fixture: "Fixture", fixtures: Optional[List["Fixture"]] = None
     ) -> List["Fixture"]:
@@ -40,7 +40,7 @@ class Joint(JointMeta):
             raise RuntimeError("Fixtures have not been computed yet!")
         return [f for f in group if f.name != fixture.name]
 
-    @Timer(name="build>compute_fixture_meshes", logger=logger.trace)
+    @Timer(name="build>joint>compute_fixture_meshes", logger=logger.trace)
     def compute_fixture_meshes(
         self, fixtures: List["Fixture"]
     ) -> List[Tuple[str, utils.SerializableMesh, FixtureMeshType]]:
@@ -51,7 +51,7 @@ class Joint(JointMeta):
             _fixtures = list(pool.starmap(Fixture.serialize_mesh, tasks))
         return _fixtures
 
-    @Timer(name="build>find_fixture_intersections", logger=logger.trace)
+    @Timer(name="build>joint>find_fixture_intersections", logger=logger.trace)
     def find_fixture_intersections(self, fixtures: List["Fixture"]) -> Dict[str, Set]:
         # Set of other fixtures that intersect K's support hole..
         fixtures_states: Dict[str, Set] = dict()
@@ -66,6 +66,7 @@ class Joint(JointMeta):
         logger.trace("fixture intersect states: {}", fixtures_states)
         return fixtures_states
 
+    @Timer(name="build>joint>construct_fixtures", logger=logger.trace)
     def construct_fixtures(self) -> List["FixtureMeta"]:
         params = self.build_fixture_params()
         fixtures = [
@@ -112,11 +113,12 @@ class Joint(JointMeta):
         self.core = core
         return self
 
+    @scad_timer
     def assemble(self):
         self.build_fixtures().build_core()
         self.scad_object = self.core.scad_object.copy() + [f.scad_object for f in self.fixtures]
         # ensure we cleanup any potential overlapped corners and such.
-        self.scad_object = bosl2.diff("fixture_hole", "fixture_base")(self.scad_object)
+        # self.scad_object = bosl2.diff(' '.join(fixture_hole_tags), ' '.join(fixture_base_tags))(self.scad_object)
 
 
 class JointCoreOnlyDebug(Joint):
@@ -138,7 +140,7 @@ class JointSingleFixtureDebug(JointLabelDebug):
         yield params
 
     def assemble(self):
-        fix = next(self.construct_fixtures())
+        fix = next(iter(self.construct_fixtures()))
         fix.scad_object = fix.create_base()
         fix.scad_object = fix.do_extrude(fix.scad_object)
         trans_fix_scad = fix.do_transform(fix.scad_object.copy())

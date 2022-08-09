@@ -50,7 +50,7 @@ class FixtureLabelPosition(IntEnum):
 
 
 class FixtureLabelParams(LabelParams):
-    target: FixtureMeta = ...
+    target: FixtureMeta = Field(...)
     position: FixtureLabelPosition = FixtureLabelPosition.ORIGIN
 
     class Config:
