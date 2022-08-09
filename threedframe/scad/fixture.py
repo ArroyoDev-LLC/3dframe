@@ -287,10 +287,10 @@ class Fixture(FixtureMeta):
         return base
 
     def add_fillets(self, obj: OpenSCADObject) -> OpenSCADObject:
-        y_fillet = self.create_fillet(spin=180, orient=bosl2.RIGHT)
-        x_fillet = self.create_fillet(orient=bosl2.FRONT)
-        obj.add(bosl2.yflip_copy()(bosl2.position([0, -1, -1])(y_fillet)))
-        obj.add(bosl2.xflip_copy()(bosl2.position([1, 0, -1])(x_fillet)))
+        # y_fillet = self.create_fillet(spin=180, orient=bosl2.RIGHT)
+        # x_fillet = self.create_fillet(orient=bosl2.FRONT)
+        # obj.add(bosl2.yflip_copy()(bosl2.position([0, -1, -1])(y_fillet)))
+        # obj.add(bosl2.xflip_copy()(bosl2.position([1, 0, -1])(x_fillet)))
         return obj
 
     def add_labels(self, obj: OpenSCADObject) -> OpenSCADObject:
