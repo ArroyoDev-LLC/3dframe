@@ -36,6 +36,17 @@ services:
     3dframe:
         <<: *3dframe-defaults
 
+    3dframe-mcg:
+        <<: *3dframe-defaults
+        image: ghcr.io/arroyodev-llc/threedframe:mcg
+        build:
+            <<: *3dframe-build
+            args:
+                BLENDER_MAJOR: 3.2
+                BLENDER_VERSION: 3.2.1
+                BLENDER_ARCH: linux-x64
+                OPENSCAD_REPO: "https://github.com/parvit/openscad.git"
+                OPENSCAD_REV: "feature_multicore_geometry"
     shell:
         <<: *3dframe-util
         entrypoint: ["/docker-entrypoint.sh"]
