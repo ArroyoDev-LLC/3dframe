@@ -36,7 +36,7 @@ class _Config(BaseSettings):
 
     @property
     def scad_header(self) -> str:
-        tmpl = "$fn = {c.SEGMENTS};\ninclude <BOSL2/std.scad>\n"
+        tmpl = "$fn = {c.SEGMENTS};"
         return tmpl.format(c=self)
 
     @property
