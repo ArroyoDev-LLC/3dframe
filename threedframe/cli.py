@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 """Console script for 3DFrame."""
 from enum import Enum
 from typing import TYPE_CHECKING, List, Optional
@@ -11,9 +9,12 @@ from devtools import debug
 from rich.tree import Tree
 from rich.table import Table
 
-from threedframe.config import config  # noqa
+from threedframe.config import config
+
+from threedframe.metrics.timer import TimerReport  # noqa
 
 config.setup_solid()  # noqa
+
 
 from codetiming import Timer
 
@@ -163,29 +164,37 @@ def generate(
     typer.secho(
         f"Building joints for {vert_count} vertices.", bold=True, fg=typer.colors.BRIGHT_WHITE
     )
-    director.assemble()
+    try:
+        director.assemble()
 
-    perf_grid = Table(
-        "Timer", "Entries", "Total", "Min", "Max", "Avg", "Median", "Stdev", title="Benchmarks"
-    )
-    for timer_name in Timer.timers.keys():
-        meths = (
-            "count",
-            "total",
-            "min",
-            "max",
-            "mean",
-            "median",
-            "stdev",
+        perf_grid = Table(
+            "Timer", "Entries", "Total", "Min", "Max", "Avg", "Median", "Stdev", title="Benchmarks"
         )
-        stats = [str(round(getattr(Timer.timers, m)(timer_name), 3)) for m in meths]
-        perf_grid.add_row(timer_name, *stats)
+        for timer_name in Timer.timers.keys():
+            meths = (
+                "count",
+                "total",
+                "min",
+                "max",
+                "mean",
+                "median",
+                "stdev",
+            )
+            stats = [str(round(getattr(Timer.timers, m)(timer_name), 3)) for m in meths]
+            perf_grid.add_row(timer_name, *stats)
 
-    print("")
-    print(perf_grid)
-    if preview:
-        vidx = director.vertex_by_idx_or_label(next(iter(vertices)))
-        director.preview_joint(vidx)
+        print("")
+        print(perf_grid)
+
+        timer_report = TimerReport(Timer)
+        print(timer_report)
+    except Exception as e:
+        print(e)
+        raise
+    else:
+        if preview:
+            vidx = director.vertex_by_idx_or_label(next(iter(vertices)))
+            director.preview_joint(vidx)
 
 
 @app.command()
