@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import math
 from enum import Enum
 from typing import TYPE_CHECKING, Type, Tuple, Union, Optional, DefaultDict
@@ -12,7 +14,7 @@ import solid.extensions.legacy.utils as sputils
 from loguru import logger
 from euclid3 import Point3 as EucPoint3
 from euclid3 import Vector3 as EucVector3
-from pydantic.main import BaseModel
+from pydantic import Field, BaseModel
 from solid.core.object_base import OpenSCADObject
 
 from threedframe import utils
@@ -26,9 +28,18 @@ if TYPE_CHECKING:
     from threedframe.scad.interfaces import LabelMeta
 
 
+class FixtureTag(str, Enum):
+    BASE = "fixture_base"
+    BASE_SOLID = "fixture_base_solid"
+    FILLET = "fix_fillet"
+    HOLE = "fixture_hole"
+    LABELS = "labels"
+
+
 class FixtureParams(BaseModel):
     source_edge: "ModelEdge"
     source_vertex: "ModelVertex"
+    tags: dict[FixtureTag, str] = Field(default_factory=dict)
 
     @property
     def source_coords(self) -> Tuple[float, ...]:
@@ -172,7 +183,7 @@ class FixtureParams(BaseModel):
             )
         )
 
-    def create_tag(self, name: str) -> str:
+    def create_tag(self, name: FixtureTag) -> str:
         """Create BOSL2 tag name.
 
         Args:
@@ -182,19 +193,21 @@ class FixtureParams(BaseModel):
             Tag with name unique to fixture.
 
         """
-        return f"fixture_{self.source_label}-{self.target_label}_{name}"
+        tag_value = f"fixture_{self.source_label}-{self.target_label}_{name}"
+        self.tags[name] = tag_value
+        return tag_value
 
     @property
     def base_tag(self) -> str:
-        return self.create_tag("base")
+        return self.create_tag(FixtureTag.BASE)
 
     @property
     def hole_tag(self) -> str:
-        return self.create_tag("hole")
+        return self.create_tag(FixtureTag.HOLE)
 
     @property
     def labels_tag(self) -> str:
-        return self.create_tag("labels")
+        return self.create_tag(FixtureTag.LABELS)
 
     def angle_between(self, other: "FixtureParams") -> float:
         """Calculate angle between self and other fixture."""
@@ -253,12 +266,15 @@ class Fixture(FixtureMeta):
         return bosl2.cube(
             [config.fixture_hole_size, config.fixture_hole_size, self.params.extrusion_height],
             anchor=bosl2.BOTTOM,
-            _tags="fixture_hole " + self.params.hole_tag,
+            _tag=self.params.hole_tag,
         )
 
     def create_fillet(self, **kwargs) -> OpenSCADObject:
         fillet: OpenSCADObject = bosl2.interior_fillet(
-            l=config.fixture_size, r=config.fixture_size / 4.5, _tags="fix_fillet", **kwargs
+            l=config.fixture_size,
+            r=config.fixture_size / 4.5,
+            _tag=self.params.create_tag(FixtureTag.FILLET),
+            **kwargs,
         )
         return fillet
 
@@ -266,7 +282,7 @@ class Fixture(FixtureMeta):
         base: OpenSCADObject = bosl2.cube(
             [config.fixture_size, config.fixture_size, self.extrusion_height],
             anchor=bosl2.BOTTOM,
-            _tags="fixture_base " + self.params.base_tag,
+            _tag=self.params.base_tag,
         )
         return base
 
@@ -292,7 +308,7 @@ class Fixture(FixtureMeta):
 
     def subtract_parts(self, obj: OpenSCADObject) -> OpenSCADObject:
         diff_tags = " ".join([self.params.hole_tag, self.params.labels_tag])
-        return bosl2.diff(diff_tags, self.params.base_tag)(obj)
+        return bosl2.diff(diff_tags)(obj)
 
     def do_extrude(self, obj: OpenSCADObject):
         obj = self.add_hole(obj)
@@ -389,8 +405,8 @@ class Fixture(FixtureMeta):
 class SolidFixture(Fixture):
     def create_base(self) -> OpenSCADObject:
         obj = super().create_base()
-        solid_tags = self.params.base_tag + " fixture_solid"
-        obj.params.update(_tags=solid_tags)
+        solid_tag = self.params.create_tag(FixtureTag.BASE_SOLID)
+        obj.params.update(_tag=solid_tag)
         return obj
 
     def do_extrude(self, obj: sp.core.object_base.OpenSCADObject):
