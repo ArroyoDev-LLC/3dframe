@@ -26,6 +26,7 @@ x-3dframe: &3dframe-defaults
         - ./data:/data/models
         - ./renders:/data/renders
         - ./.direnv/ipython:/data/.ipython
+        - ./openscad.conf:/data/.config/OpenSCAD/OpenSCAD.conf
 
 x-3dframe-util: &3dframe-util
     <<: *3dframe-defaults
@@ -51,6 +52,11 @@ services:
         <<: *3dframe-util
         entrypoint: ["/docker-entrypoint.sh"]
         command: ["bash"]
+
+    openscad:
+        <<: *3dframe-util
+        entrypoint: ["/docker-entrypoint.sh"]
+        command: ["openscad"]
 
     test:
         <<: *3dframe-util
