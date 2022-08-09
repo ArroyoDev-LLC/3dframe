@@ -43,12 +43,12 @@ ENV PATH="${DATA_DIR}/poetry/bin:$PATH"
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        xorg-dev \
-        libglu1-mesa-dev \
-        libosmesa6-dev \
-        # openscad runtime.
-        libboost-all-dev \
-        libdouble-conversion3 \
+    xorg-dev \
+    libglu1-mesa-dev \
+    libosmesa6-dev \
+    # openscad runtime.
+    libboost-all-dev \
+    libdouble-conversion3 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -64,10 +64,10 @@ FROM debian:${DEBIAN_BASE_TAG} AS debian-base
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        git \
-        curl \
-        ca-certificates \
-        xz-utils \
+    git \
+    curl \
+    ca-certificates \
+    xz-utils \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -147,7 +147,7 @@ RUN groupadd --gid $USER_GID --system ${USER_NAME} \
 
 USER threedframe
 
-RUN ${POETRY_HOME}/bin/poetry install --no-root
+RUN ${POETRY_HOME}/bin/poetry install --no-root --with=dev
 
 # Copy OpenSCAD & Blender binaries
 COPY --from=openscad /openscad/build/openscad /usr/local/bin/openscad
@@ -158,7 +158,6 @@ COPY . .
 RUN ${POETRY_HOME}/bin/poetry install --only-root
 
 COPY ./scripts/docker-entrypoint.sh /docker-entrypoint.sh
-VOLUME [ $APP_PATH $RENDERS_DIR $MODELS_DIR ]
 ENTRYPOINT [ "/docker-entrypoint.sh", "poetry", "run", "threedframe/cli.py" ]
 CMD ["--help"]
 
