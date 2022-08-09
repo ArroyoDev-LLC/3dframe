@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, Type, Union, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Dict, Type, Union, Generic, TypeVar, Optional, Sequence
 from pathlib import Path
 from multiprocessing import Pool
 
@@ -20,7 +20,10 @@ if TYPE_CHECKING:
     from .interfaces import CoreMeta, JointMeta, LabelMeta, FixtureMeta
 
 
-class JointDirectorParams(BaseModel):
+ModelT = TypeVar("ModelT", Path, ModelData)
+
+
+class JointDirectorParams(Generic[ModelT], BaseModel):
     joint_builder: Optional[Type["JointMeta"]] = Joint
     fixture_builder: Optional[Type["FixtureMeta"]] = None
     fixture_label_builder: Optional[Type["LabelMeta"]] = None
@@ -30,7 +33,7 @@ class JointDirectorParams(BaseModel):
     vertices: Optional[Sequence[Union[int, str]]] = None
     render: bool = False
     render_file_type: Optional[RenderFileType] = RenderFileType.STL
-    model: Union[Path, "ModelData"]
+    model: ModelT
     overwrite: bool = False
 
     @staticmethod
@@ -71,7 +74,7 @@ class JointDirectorParams(BaseModel):
 
 @attr.s(auto_attribs=True)
 class JointDirector:
-    params: JointDirectorParams
+    params: JointDirectorParams[ModelData]
     joints: Dict["ModelVertex", "JointMeta"] = attr.ib(factory=dict)
     scad_paths: Dict["ModelVertex", Path] = attr.ib(factory=dict)
     render_paths: Dict["ModelVertex", Path] = attr.ib(factory=dict)
