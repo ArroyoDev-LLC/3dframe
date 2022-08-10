@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import abc
-from typing import TYPE_CHECKING, List, Type, TypeVar, Callable, Iterator, Optional
+from typing import TYPE_CHECKING, List, Type, TypeVar, Callable, Iterator, Optional, Protocol
 from pathlib import Path
 
-import attr
+import attrs
 import open3d as o3d
 from loguru import logger
 from euclid3 import Point3 as EucPoint3
@@ -28,7 +28,9 @@ P = ParamSpec("P")
 
 def scad_timer(f: Callable[P, T]) -> Callable[P, T]:
     def inner(*args: P.args, **kwargs: P.kwargs) -> T:
-        inst: ScadMeta = args[0]
+        inst = args[0]
+        if not isinstance(inst, ScadMeta):
+            raise TypeError("First argument must be a typeof ScadMeta.")
         cls_name = inst.__class__.__name__.lower()
         f_name = f.__name__
         timer = Timer(name=f"build>{cls_name}>{f_name}", logger=logger.trace)
@@ -40,9 +42,9 @@ def scad_timer(f: Callable[P, T]) -> Callable[P, T]:
     return inner
 
 
-@attr.s(auto_attribs=True)
+@attrs.define
 class ScadMeta(abc.ABC):
-    scad_object: Optional[OpenSCADObject] = attr.ib(None, init=False, repr=False)
+    scad_object: Optional[OpenSCADObject] = attrs.field(default=None, init=False, repr=False)
 
     @property
     @abc.abstractmethod
@@ -81,11 +83,11 @@ class ScadMeta(abc.ABC):
         raise NotImplementedError
 
 
-@attr.s(auto_attribs=True)
+@attrs.define
 class FixtureMeta(ScadMeta, abc.ABC):
-    params: "FixtureParams" = attr.ib(..., repr=False)
+    params: "FixtureParams" = attrs.field(repr=False)
 
-    _extrusion_height: Optional[float] = attr.ib(None, init=False)
+    _extrusion_height: Optional[float] = attrs.field(default=None, init=False)
 
     @property
     def extrusion_height(self) -> float:
@@ -182,9 +184,9 @@ class FixtureMeta(ScadMeta, abc.ABC):
         self.scad_object = obj
 
 
-@attr.s(auto_attribs=True)
+@attrs.define
 class CoreMeta(ScadMeta, abc.ABC):
-    fixtures: List["FixtureMeta"] = attr.ib(...)
+    fixtures: List["FixtureMeta"]
 
     @abc.abstractmethod
     def assemble(self):
@@ -198,9 +200,9 @@ class CoreMeta(ScadMeta, abc.ABC):
         return tags
 
 
-@attr.s(auto_attribs=True)
+@attrs.define
 class LabelMeta(ScadMeta, abc.ABC):
-    params: "LabelParams" = attr.ib(..., repr=False)
+    params: "LabelParams" = attrs.field(repr=False)
 
     def create_base(self) -> OpenSCADObject:
         _params = self.params.dict()
@@ -218,18 +220,27 @@ class LabelMeta(ScadMeta, abc.ABC):
         self.scad_object = obj
 
 
-@attr.s(auto_attribs=True)
-class JointMeta(ScadMeta, abc.ABC):
-    core: "CoreMeta" = attr.ib(init=False)
-    fixtures: List["FixtureMeta"] = attr.ib(init=False, default=[])
-    solid_fixtures: List["FixtureMeta"] = attr.ib(init=False, default=[])
-
-    fixture_builder: Type["FixtureMeta"] = ...
-    fixture_label_builder: Type["LabelMeta"] = ...
-    core_builder: Type["CoreMeta"] = ...
-    core_label_builder: Type["LabelMeta"] = ...
-
+class JointParamsMeta(Protocol):
     vertex: "ModelVertex" = ...
+
+
+@attrs.define
+class JointMeta(ScadMeta, abc.ABC):
+    core: "CoreMeta" = attrs.field(init=False)
+    fixtures: List["FixtureMeta"] = attrs.field(init=False, default=[])
+    solid_fixtures: List["FixtureMeta"] = attrs.field(init=False, default=[])
+
+    fixture_builder: Type["FixtureMeta"]
+    fixture_label_builder: Type["LabelMeta"]
+    core_builder: Type["CoreMeta"]
+    core_label_builder: Type["LabelMeta"]
+
+    params: JointParamsMeta
+
+    @property
+    def vertex(self) -> "ModelVertex":
+        """Backwards compat."""
+        return self.params.vertex
 
     @property
     def name(self) -> str:
