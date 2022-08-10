@@ -1,24 +1,54 @@
+from __future__ import annotations
+
 import itertools
 from typing import TYPE_CHECKING, Set, Dict, List, Type, Tuple, Iterator, Optional
 from multiprocessing import Pool
 
-import attr
+import attrs
 import solid as sp
 from loguru import logger
+from pydantic import BaseModel
 from codetiming import Timer
 
 from threedframe import utils
+from threedframe.models import ModelVertex
+from threedframe.scad.context import BuildFlag
 from threedframe.scad.interfaces import JointMeta, LabelMeta, scad_timer
 
 from .core import Core
 from .label import CoreLabel, FixtureLabel
-from .fixture import Fixture, FixtureParams, FixtureMeshType
+from .fixture import Fixture, FixtureParams, FixtureContext, FixtureMeshType
 
 if TYPE_CHECKING:
-    from .interfaces import CoreMeta, FixtureMeta
+    from .context import Context
+    from .interfaces import CoreMeta, FixtureMeta, JointParamsMeta
 
 
-@attr.s(auto_attribs=True)
+@attrs.define
+class JointContext:
+    context: Context
+    strategy: JointMeta
+
+    fixture_context: FixtureContext = attrs.field(default=None)
+
+    @property
+    def flags(self) -> BuildFlag:
+        return self.context.flags
+
+    @classmethod
+    def from_build_context(cls, ctx: Context) -> JointContext:
+        strategy = Joint
+        ctx = cls(context=ctx, strategy=strategy)
+        fixture_ctx = FixtureContext.from_build_context(ctx)
+        ctx.fixture_context = fixture_ctx
+        return ctx
+
+
+class JointParams(BaseModel, JointParamsMeta):
+    vertex: ModelVertex
+
+
+@attrs.define
 class Joint(JointMeta):
     fixture_builder: Type["FixtureMeta"] = Fixture
     fixture_label_builder: Type["LabelMeta"] = FixtureLabel
