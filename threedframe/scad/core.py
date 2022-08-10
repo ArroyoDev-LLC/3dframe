@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Optional
 
-import attr
+import attrs
 import numpy as np
 import solid
 import solid.extensions.bosl2 as bosl2
 
 from threedframe.utils import distance3d
+from threedframe.scad.label import LabelContext
+from threedframe.scad.context import Context, BuildFlag
 from threedframe.scad.interfaces import CoreMeta, scad_timer
 
 if TYPE_CHECKING:
@@ -15,14 +17,34 @@ if TYPE_CHECKING:
     import open3d as o3d
 
 
-@attr.s(auto_attribs=True)
+@attrs.define
+class CoreContext:
+    context: Context
+    strategy: CoreMeta
+
+    label_context: LabelContext = attrs.field(default=None)
+
+    @property
+    def flags(self) -> BuildFlag:
+        return self.context.flags | BuildFlag.CORE_LABEL
+
+    @classmethod
+    def from_build_context(cls, ctx: Context):
+        strategy = Core
+        child_ctx = cls(context=ctx, strategy=strategy)
+        label_ctx = LabelContext.from_build_context(child_ctx)
+        return child_ctx
+
+
+@attrs.define
 class Core(CoreMeta):
-    verts: list[float] = attr.ib(default=[])
+    verts: list[float] = attrs.field(factory=list)
 
     @property
     def source_label(self) -> Optional[str]:
         if any(self.fixtures):
             return self.fixtures[0].params.source_label
+        return None
 
     @property
     def name(self) -> str:
@@ -56,7 +78,7 @@ class Core(CoreMeta):
         self.scad_object = solid.polyhedron(self.verts, bosl2.hull3d_faces(self.verts))
 
 
-@attr.s(auto_attribs=True)
+@attrs.define
 class CoreDebugVertices(Core):
     def assemble(self):
         super().assemble()
