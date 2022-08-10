@@ -1,9 +1,12 @@
 """3dframe model models."""
+from __future__ import annotations
+
 import string
 import itertools
-from typing import Dict, List, Tuple, Iterator, Optional
+from typing import Dict, List, Tuple, Union, Iterator, Optional
+from pathlib import Path
 
-from pydantic import Field, BaseModel, validator
+from pydantic import Field, BaseModel, validator, parse_file_as
 
 
 class ModelEdge(BaseModel):
@@ -95,6 +98,19 @@ class ModelData(BaseModel):
         vert = next((v for v in self.vertices.values() if v.label.lower() == label.lower()), None)
         if vert:
             return vert.vidx
+        return None
+
+    @classmethod
+    def from_path(cls, path: Path) -> ModelData:
+        """Parse data from file at path."""
+        return parse_file_as(ModelData, path)
+
+    @classmethod
+    def from_source(cls, source: Union[Path, ModelData]) -> ModelData:
+        """Instantiate ModelData from a given source."""
+        if isinstance(source, cls):
+            return source
+        return cls.from_path(source)
 
 
 ModelVertex.update_forward_refs()

@@ -1,42 +1,51 @@
-from typing import TYPE_CHECKING, Any, Dict, Type, Union, Generic, TypeVar, Optional, Sequence
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Dict, Union, TypeVar, Optional, Sequence
 from pathlib import Path
 from multiprocessing import Pool
 
-import attr
+import attrs
 import open3d as o3d
 import psutil
 from loguru import logger
-from pydantic import BaseModel, validator, parse_file_as
+from pydantic import BaseModel, validator
 from codetiming import Timer
 
 from threedframe import utils
 from threedframe.models import ModelData, ModelVertex
 from threedframe.constant import RenderFileType
-from threedframe.scad.joint import Joint
+from threedframe.scad.context import Context, BuildFlag
 
 from ..config import config
 
 if TYPE_CHECKING:
-    from .interfaces import CoreMeta, JointMeta, LabelMeta, FixtureMeta
-
+    from .interfaces import ScadMeta, JointMeta
 
 ModelT = TypeVar("ModelT", Path, ModelData)
+ScadT = TypeVar("ScadT", bound="ScadMeta")
 
 
-class JointDirectorParams(Generic[ModelT], BaseModel):
-    joint_builder: Optional[Type["JointMeta"]] = Joint
-    fixture_builder: Optional[Type["FixtureMeta"]] = None
-    fixture_label_builder: Optional[Type["LabelMeta"]] = None
-    core_builder: Optional[Type["CoreMeta"]] = None
-    core_label_builder: Optional[Type["LabelMeta"]] = None
+@attrs.define
+class BuildContext:
+    flags: BuildFlag
+    joint_context: Context
+
+
+class JointDirectorParams(BaseModel):
+    # joint_builder: Optional[Type["JointMeta"]] = Joint
+    # fixture_builder: Optional[Type["FixtureMeta"]] = None
+    # fixture_label_builder: Optional[Type["LabelMeta"]] = None
+    # core_builder: Optional[Type["CoreMeta"]] = None
+    # core_label_builder: Optional[Type["LabelMeta"]] = None
 
     vertices: Optional[Sequence[Union[int, str]]] = None
     render: bool = False
     render_file_type: Optional[RenderFileType] = RenderFileType.STL
-    model: ModelT
+    model: ModelData
     overwrite: bool = False
 
     @staticmethod
+    @Timer("director>resolve_edge_relations")
     def _resolve_edge_relations(
         model: "ModelData", vertices: Dict[int, "ModelVertex"]
     ) -> "ModelData":
@@ -55,8 +64,7 @@ class JointDirectorParams(Generic[ModelT], BaseModel):
 
     @validator("model", always=True)
     def validate_model_data(cls, v: Union[Path, "ModelData"], values: Dict[str, Any]) -> ModelData:
-        if isinstance(v, Path):
-            v: ModelData = parse_file_as(ModelData, v)
+        v = ModelData.from_source(v)
         verts = values["vertices"]
         resolve_verts = v.vertices
         if verts is not None:
@@ -72,12 +80,13 @@ class JointDirectorParams(Generic[ModelT], BaseModel):
         return v
 
 
-@attr.s(auto_attribs=True)
+@attrs.define
 class JointDirector:
-    params: JointDirectorParams[ModelData]
-    joints: Dict["ModelVertex", "JointMeta"] = attr.ib(factory=dict)
-    scad_paths: Dict["ModelVertex", Path] = attr.ib(factory=dict)
-    render_paths: Dict["ModelVertex", Path] = attr.ib(factory=dict)
+    context: BuildContext
+    params: JointDirectorParams
+    joints: Dict["ModelVertex", "JointMeta"] = attrs.field(factory=dict)
+    scad_paths: Dict["ModelVertex", Path] = attrs.field(factory=dict)
+    render_paths: Dict["ModelVertex", Path] = attrs.field(factory=dict)
 
     @property
     def builder_params(self) -> Dict[str, Any]:
