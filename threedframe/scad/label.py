@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 from enum import IntEnum
 from typing import TYPE_CHECKING, Any, Dict, Union
 
-import attr
+import attrs
 import solid as sp
 import sympy as S
 import solid.extensions.bosl2 as bosl2
@@ -14,10 +16,29 @@ from solid.core.object_base import OpenSCADObject
 
 from threedframe import utils
 from threedframe.config import config
+from threedframe.scad.context import Context, BuildFlag
 from threedframe.scad.interfaces import LabelMeta, FixtureMeta
 
 if TYPE_CHECKING:
     from pydantic.typing import DictStrAny
+
+
+@attrs.define
+class LabelContext:
+    context: Context
+    strategy: LabelMeta
+
+    @property
+    def flags(self) -> BuildFlag:
+        return self.context.flags
+
+    @classmethod
+    def from_build_context(cls, ctx: Context) -> LabelContext:
+        strategy: LabelMeta = FixtureLabel
+        if ctx.flags & BuildFlag.CORE_LABEL:
+            strategy = CoreLabel
+        child_ctx = cls(context=ctx, strategy=strategy)
+        return child_ctx
 
 
 class LabelParams(BaseModel):
@@ -61,7 +82,7 @@ class FixtureLabelParams(LabelParams):
         return self.target.params.labels_tag
 
 
-@attr.s(auto_attribs=True, kw_only=True)
+@attrs.define(kw_only=True)
 class FixtureLabel(LabelMeta):
     params: FixtureLabelParams
 
@@ -84,7 +105,7 @@ class FixtureLabel(LabelMeta):
         return res(obj)
 
 
-@attr.s(auto_attribs=True, kw_only=True)
+@attrs.define(kw_only=True)
 class CoreLabel(LabelMeta):
     core_data: Dict[str, Any]
 
