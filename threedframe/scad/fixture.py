@@ -4,7 +4,7 @@ import math
 from enum import Enum
 from typing import TYPE_CHECKING, Type, Tuple, Union, Optional, DefaultDict
 
-import attr
+import attrs
 import numpy as np
 import solid as sp
 import sympy as S
@@ -21,11 +21,32 @@ from threedframe import utils
 from threedframe.config import config
 from threedframe.models import ModelEdge, ModelVertex
 from threedframe.constant import Constants, PlanarConstants
-from threedframe.scad.label import FixtureLabel, FixtureLabelParams
+from threedframe.scad.label import FixtureLabel, LabelContext, FixtureLabelParams
+from threedframe.scad.context import Context, BuildFlag
 from threedframe.scad.interfaces import FixtureMeta
 
 if TYPE_CHECKING:
     from threedframe.scad.interfaces import LabelMeta
+
+
+@attrs.define
+class FixtureContext:
+    context: Context
+    strategy: FixtureMeta
+
+    label_context: LabelContext = attrs.field(default=None)
+
+    @property
+    def flags(self):
+        return self.context.flags | BuildFlag.FIXTURE_LABEL
+
+    @classmethod
+    def from_build_context(cls, ctx: Context) -> FixtureContext:
+        strategy = Fixture
+        ctx = cls(context=ctx, strategy=strategy)
+        label_ctx = LabelContext.from_build_context(ctx)
+        ctx.label_context = label_ctx
+        return ctx
 
 
 class FixtureTag(str, Enum):
@@ -221,10 +242,10 @@ class FixtureMeshType(str, Enum):
     SHELL = "shell"
 
 
-@attr.s(auto_attribs=True)
+@attrs.define
 class Fixture(FixtureMeta):
     label_builder: Type["LabelMeta"] = FixtureLabel
-    meshes: DefaultDict[FixtureMeshType, Optional[o3d.geometry.TriangleMesh]] = attr.ib(
+    meshes: DefaultDict[FixtureMeshType, Optional[o3d.geometry.TriangleMesh]] = attrs.field(
         factory=utils.default_nonedict
     )
 
@@ -401,7 +422,7 @@ class Fixture(FixtureMeta):
         return do_intersect
 
 
-@attr.s(auto_attribs=True)
+@attrs.define
 class SolidFixture(Fixture):
     def create_base(self) -> OpenSCADObject:
         obj = super().create_base()
@@ -413,7 +434,7 @@ class SolidFixture(Fixture):
         return obj
 
 
-@attr.s(auto_attribs=True)
+@attrs.define
 class FixtureLabelDebug(Fixture):
     def do_extrude(self, obj: OpenSCADObject):
         hole = self.create_hole()
@@ -426,7 +447,7 @@ class FixtureLabelDebug(Fixture):
         return bosl2.diff(self.params.hole_tag, self.params.base_tag)(obj)
 
 
-@attr.s(auto_attribs=True)
+@attrs.define
 class FixtureSimpleDebug(Fixture):
     def add_fillets(self, obj: OpenSCADObject) -> OpenSCADObject:
         return obj
