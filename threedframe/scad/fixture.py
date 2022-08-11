@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 from enum import Enum
-from typing import TYPE_CHECKING, Type, Tuple, Union, Optional, DefaultDict
+from typing import Type, Tuple, Union, Optional, DefaultDict
 
 import attrs
 import numpy as np
@@ -21,32 +21,41 @@ from threedframe import utils
 from threedframe.config import config
 from threedframe.models import ModelEdge, ModelVertex
 from threedframe.constant import Constants, PlanarConstants
-from threedframe.scad.label import FixtureLabel, LabelContext, FixtureLabelParams
+from threedframe.scad.label import LabelContext, FixtureLabelParams
 from threedframe.scad.context import Context, BuildFlag
-from threedframe.scad.interfaces import FixtureMeta
-
-if TYPE_CHECKING:
-    from threedframe.scad.interfaces import LabelMeta
+from threedframe.scad.interfaces import FixtureMeta, scad_timer
 
 
 @attrs.define
-class FixtureContext:
+class FixtureContext(Context["FixtureParams"]):
     context: Context
-    strategy: FixtureMeta
+    strategy: Type[FixtureMeta]
 
     label_context: LabelContext = attrs.field(default=None)
 
     @property
     def flags(self):
-        return self.context.flags | BuildFlag.FIXTURE_LABEL
+        return self.context.flags ^ BuildFlag.CORE_LABEL
 
     @classmethod
     def from_build_context(cls, ctx: Context) -> FixtureContext:
         strategy = Fixture
-        ctx = cls(context=ctx, strategy=strategy)
-        label_ctx = LabelContext.from_build_context(ctx)
-        ctx.label_context = label_ctx
-        return ctx
+        child_ctx = cls(context=ctx, strategy=strategy)
+        label_ctx = LabelContext.from_build_context(child_ctx)
+        child_ctx.label_context = label_ctx
+        return child_ctx
+
+    def build_strategy(self, params: FixtureParams) -> FixtureMeta:
+        inst = self.strategy(params=params, context=self)
+        return inst
+
+    def assemble(self, params: FixtureParams) -> FixtureMeta:
+        inst = self.build_strategy(params)
+        inst.assemble()
+        return inst
+
+    def serialize_mesh(self, fixture: FixtureMeta, mesh_type: FixtureMeshType) -> FixtureMesh:
+        return self.strategy.serialize_mesh(fixture, mesh_type)
 
 
 class FixtureTag(str, Enum):
@@ -243,21 +252,29 @@ class FixtureMeshType(str, Enum):
 
 
 @attrs.define
+class FixtureMesh:
+    name: str
+    mesh: utils.SerializableMesh
+    mesh_type: FixtureMeshType
+
+
+@attrs.define
 class Fixture(FixtureMeta):
-    label_builder: Type["LabelMeta"] = FixtureLabel
+    context: FixtureContext
+
     meshes: DefaultDict[FixtureMeshType, Optional[o3d.geometry.TriangleMesh]] = attrs.field(
         factory=utils.default_nonedict
     )
 
     def copy(self) -> "Fixture":
-        copied = super().copy(label_builder=self.label_builder)
+        copied = super().copy(context=self.context)
         copied.extrusion_height = self.extrusion_height
         return copied
 
+    @scad_timer
     def create_label(self, content: str) -> OpenSCADObject:
         params = FixtureLabelParams(content=content, target=self)
-        label = self.label_builder(params=params)
-        label.assemble()
+        label = self.context.label_context.assemble(params=params)
         return label.scad_object
 
     @property
@@ -369,18 +386,21 @@ class Fixture(FixtureMeta):
         return self.compute_mesh(obj)
 
     def _lazy_mesh(self, mesh_type: FixtureMeshType):
+        logger.info("checking mesh type: {}", mesh_type)
         if self.meshes[mesh_type] is None:
+            logger.info("computing mesh type: {}", mesh_type)
             self.meshes[mesh_type] = getattr(self, f"create_{mesh_type}_mesh")()
         return self.meshes[mesh_type]
 
     @staticmethod
-    def serialize_mesh(
-        fixture: "Fixture", mesh_type: FixtureMeshType
-    ) -> Tuple[str, utils.SerializableMesh, FixtureMeshType]:
+    def serialize_mesh(fixture: "Fixture", mesh_type: FixtureMeshType) -> FixtureMesh:
         attr_name = f"create_{mesh_type}_mesh"
         mesh = getattr(fixture, attr_name)()
         fixture.meshes[mesh_type] = mesh
-        return fixture.name, utils.SerializableMesh(mesh), mesh_type
+        mesh = FixtureMesh(
+            name=fixture.name, mesh=utils.SerializableMesh(mesh), mesh_type=mesh_type
+        )
+        return mesh
 
     @property
     def base_mesh(self) -> o3d.geometry.TriangleMesh:
