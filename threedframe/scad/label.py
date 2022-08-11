@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import IntEnum
-from typing import TYPE_CHECKING, Any, Dict, Union
+from typing import TYPE_CHECKING, Any, Dict, Type, Union
 
 import attrs
 import solid as sp
@@ -24,9 +24,9 @@ if TYPE_CHECKING:
 
 
 @attrs.define
-class LabelContext:
+class LabelContext(Context["LabelParams"]):
     context: Context
-    strategy: LabelMeta
+    strategy: Type[LabelMeta]
 
     @property
     def flags(self) -> BuildFlag:
@@ -39,6 +39,15 @@ class LabelContext:
             strategy = CoreLabel
         child_ctx = cls(context=ctx, strategy=strategy)
         return child_ctx
+
+    def build_strategy(self, params: LabelParams) -> LabelMeta:
+        inst = self.strategy(params=params)
+        return inst
+
+    def assemble(self, params: LabelParams) -> LabelMeta:
+        inst = self.build_strategy(params)
+        inst.assemble()
+        return inst
 
 
 class LabelParams(BaseModel):
