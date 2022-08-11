@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 import abc
-from typing import TYPE_CHECKING, List, Type, TypeVar, Callable, Iterator, Optional, Protocol
+from typing import TYPE_CHECKING, List, Type, TypeVar, Callable, Iterator, Optional
 from pathlib import Path
 
 import attrs
 import open3d as o3d
 from loguru import logger
 from euclid3 import Point3 as EucPoint3
+from pydantic import BaseModel
 from codetiming import Timer
-from boltons.dictutils import OMD
 from typing_extensions import ParamSpec
 from solid.core.object_base import OpenSCADObject
 
@@ -184,20 +184,25 @@ class FixtureMeta(ScadMeta, abc.ABC):
         self.scad_object = obj
 
 
+class CoreParametersBase(BaseModel, abc.ABC):
+    fixtures: list["FixtureMeta"]
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    @property
+    @abc.abstractmethod
+    def fixture_tags(self) -> dict[FixtureTag, str]:
+        ...
+
+
 @attrs.define
 class CoreMeta(ScadMeta, abc.ABC):
-    fixtures: List["FixtureMeta"]
+    params: CoreParametersBase
 
     @abc.abstractmethod
     def assemble(self):
         raise NotImplementedError
-
-    @property
-    def fixture_tags(self) -> OMD[FixtureTag, str]:
-        tags = OMD()
-        for fixture in self.fixtures:
-            tags.update_extend(fixture.params.tags)
-        return tags
 
 
 @attrs.define
@@ -220,8 +225,11 @@ class LabelMeta(ScadMeta, abc.ABC):
         self.scad_object = obj
 
 
-class JointParamsMeta(Protocol):
-    vertex: "ModelVertex" = ...
+class JointParamsMeta(BaseModel, abc.ABC):
+    vertex: "ModelVertex"
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 @attrs.define
@@ -229,11 +237,6 @@ class JointMeta(ScadMeta, abc.ABC):
     core: "CoreMeta" = attrs.field(init=False)
     fixtures: List["FixtureMeta"] = attrs.field(init=False, default=[])
     solid_fixtures: List["FixtureMeta"] = attrs.field(init=False, default=[])
-
-    fixture_builder: Type["FixtureMeta"]
-    fixture_label_builder: Type["LabelMeta"]
-    core_builder: Type["CoreMeta"]
-    core_label_builder: Type["LabelMeta"]
 
     params: JointParamsMeta
 
