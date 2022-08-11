@@ -16,6 +16,7 @@ from solid.core.object_base import OpenSCADObject
 
 from threedframe import utils
 from threedframe.config import config
+from threedframe.scad.noop import NoOpScad
 from threedframe.scad.context import Context, BuildFlag
 from threedframe.scad.interfaces import LabelMeta, FixtureMeta
 
@@ -37,6 +38,8 @@ class LabelContext(Context["LabelParams"]):
         strategy: LabelMeta = FixtureLabel
         if ctx.flags & BuildFlag.CORE_LABEL:
             strategy = CoreLabel
+        if not ctx.flags & BuildFlag.CORE_LABEL or not ctx.flags & BuildFlag.FIXTURE_LABEL:
+            strategy = NoOpScad
         child_ctx = cls(context=ctx, strategy=strategy)
         return child_ctx
 
