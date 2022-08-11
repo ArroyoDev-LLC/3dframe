@@ -1,5 +1,9 @@
 """Console script for 3DFrame."""
-from enum import Enum
+
+from rich.traceback import install as rich_traceback  # noqa
+
+rich_traceback(show_locals=True, suppress=["pydantic", "typer", "click", "codetiming"])  # noqa
+
 from typing import TYPE_CHECKING, List, Optional
 from pathlib import Path
 
@@ -10,8 +14,9 @@ from rich.tree import Tree
 from rich.table import Table
 
 from threedframe.config import config
-
-from threedframe.metrics.timer import TimerReport  # noqa
+from threedframe.scad.build import DirectorContext
+from threedframe.scad.context import BuildFlag, BuildContext
+from threedframe.metrics.timer import TimerReport
 
 config.setup_solid()  # noqa
 
@@ -19,53 +24,11 @@ config.setup_solid()  # noqa
 from codetiming import Timer
 
 import threedframe.utils
-from threedframe.scad import JointDirector, JointDirectorParams, ParallelJointDirector
-from threedframe.scad.joint import (
-    JointLabelDebug,
-    JointFixturesOnly,
-    JointCoreOnlyDebug,
-    JointSingleFixtureDebug,
-)
-from threedframe.scad.label import FixtureLabelDebugArrows
-from threedframe.scad.fixture import FixtureLabelDebug, FixtureSimpleDebug
+from threedframe.scad import JointDirector, JointDirectorParams
 
 if TYPE_CHECKING:
     from threedframe.scad.joint import Joint
     from threedframe.scad.interfaces import FixtureMeta
-
-
-class BuildStrategy(str, Enum):
-    CORE_ONLY = "debugCoreOnly"
-    CORE_VERTICES = "debugCoreVertices"
-    FIXTURE_LABELS = "debugFixLabels"
-    FIXTURE_LABELS_ARROWS = "debugFixLabelsArrows"
-    SINGLE_FIXTURE = "debugSingleFixture"
-    SIMPLE_FIXTURES = "debugSimpleFixtures"
-    PARALLEL = "parallel"
-
-    @property
-    def _builders(self):
-        return {
-            BuildStrategy.CORE_ONLY: {"joint_builder": JointCoreOnlyDebug},
-            BuildStrategy.FIXTURE_LABELS: {
-                "joint_builder": JointLabelDebug,
-                "fixture_builder": FixtureLabelDebug,
-            },
-            BuildStrategy.FIXTURE_LABELS_ARROWS: {
-                "joint_builder": JointLabelDebug,
-                "fixture_label_builder": FixtureLabelDebugArrows,
-            },
-            BuildStrategy.SINGLE_FIXTURE: {"joint_builder": JointSingleFixtureDebug},
-            BuildStrategy.SIMPLE_FIXTURES: {
-                "joint_builder": JointFixturesOnly,
-                "fixture_builder": FixtureSimpleDebug,
-            },
-            BuildStrategy.PARALLEL: {"director": ParallelJointDirector},
-        }
-
-    @property
-    def builders(self):
-        return self._builders[self]
 
 
 app = typer.Typer(name="3dframe")
@@ -109,9 +72,6 @@ RendersDirOpt: Path = typer.Option(
 def generate(
     model_path=ModelPathArg,
     vertices: Optional[List[str]] = VerticesArg,
-    build_mode: Optional[BuildStrategy] = typer.Option(
-        None, "-b", "--build-mode", help="Optional debug mode to utilize."
-    ),
     render: Optional[bool] = typer.Option(
         False, "-r", "--render", help="Render mesh.", is_flag=True
     ),
@@ -127,6 +87,9 @@ def generate(
     no_cache: Optional[bool] = typer.Option(
         False, "--no-cache", help="Disable caching.", is_flag=True
     ),
+    fixtures: bool = typer.Option(True, is_flag=True, help="Generate Fixtures."),
+    core: bool = typer.Option(True, is_flag=True, help="Generate Core."),
+    labels: bool = typer.Option(True, is_flag=True, help="Generate Labels."),
 ):
     """Generate joint model from given vertices."""
     if preview:
@@ -139,21 +102,22 @@ def generate(
         config.RENDERS_DIR = Path(renders_dir)
     if no_cache:
         config.set_solid_caching(False)
-    params = JointDirectorParams(
-        model=model_path, vertices=vertices, render=render, render_file_type=render_format
+    params = JointDirectorParams.from_model_path(
+        model_path, vertices=vertices, render=render, render_file_type=render_format
     )
-    director_cls = JointDirector
-    if build_mode is not None:
-        builders = build_mode.builders.copy()
-        director_cls = builders.pop("director", director_cls)
-        params = JointDirectorParams(
-            model=model_path,
-            vertices=vertices,
-            render=render,
-            render_file_type=render_format,
-            **builders,
-        )
-    director = director_cls(params=params)
+
+    build_flags = BuildFlag.JOINT
+    if fixtures is False:
+        build_flags ^= BuildFlag.FIXTURES
+    if core is False:
+        build_flags ^= BuildFlag.CORE
+    if labels is False:
+        build_flags ^= BuildFlag.LABELS
+
+    build_ctx = BuildContext(build_flags=build_flags)
+
+    director_ctx = DirectorContext.from_build_context(build_ctx)
+
     vert_count = "all" if vertices is None else len(vertices)
     if dump_config:
         debug(config)
@@ -165,7 +129,7 @@ def generate(
         f"Building joints for {vert_count} vertices.", bold=True, fg=typer.colors.BRIGHT_WHITE
     )
     try:
-        director.assemble()
+        director = director_ctx.assemble(params)
 
         perf_grid = Table(
             "Timer", "Entries", "Total", "Min", "Max", "Avg", "Median", "Stdev", title="Benchmarks"
