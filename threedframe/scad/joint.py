@@ -1,35 +1,37 @@
 from __future__ import annotations
 
+import os
+import time
 import itertools
-from typing import TYPE_CHECKING, Set, Dict, List, Type, Tuple, Iterator, Optional
+from typing import Set, Dict, List, Type, Iterator, Optional
+from functools import partial
 from multiprocessing import Pool
 
 import attrs
 import solid as sp
 from loguru import logger
-from pydantic import BaseModel
-from codetiming import Timer
 
 from threedframe import utils
 from threedframe.models import ModelVertex
-from threedframe.scad.context import BuildFlag
-from threedframe.scad.interfaces import JointMeta, LabelMeta, scad_timer
-
-from .core import Core
-from .label import CoreLabel, FixtureLabel
-from .fixture import Fixture, FixtureParams, FixtureContext, FixtureMeshType
-
-if TYPE_CHECKING:
-    from .context import Context
-    from .interfaces import CoreMeta, FixtureMeta, JointParamsMeta
+from threedframe.scad.core import CoreParams, CoreContext
+from threedframe.scad.context import Context, BuildFlag
+from threedframe.scad.fixture import (
+    Fixture,
+    FixtureMesh,
+    FixtureParams,
+    FixtureContext,
+    FixtureMeshType,
+)
+from threedframe.scad.interfaces import JointMeta, FixtureMeta, JointParamsMeta, scad_timer
 
 
 @attrs.define
-class JointContext:
+class JointContext(Context["JointParams"]):
     context: Context
-    strategy: JointMeta
+    strategy: Type[JointMeta]
 
     fixture_context: FixtureContext = attrs.field(default=None)
+    core_context: CoreContext = attrs.field(default=None)
 
     @property
     def flags(self) -> BuildFlag:
@@ -38,29 +40,37 @@ class JointContext:
     @classmethod
     def from_build_context(cls, ctx: Context) -> JointContext:
         strategy = Joint
-        ctx = cls(context=ctx, strategy=strategy)
-        fixture_ctx = FixtureContext.from_build_context(ctx)
-        ctx.fixture_context = fixture_ctx
-        return ctx
+        child_ctx = cls(context=ctx, strategy=strategy)
+        fixture_ctx = FixtureContext.from_build_context(child_ctx)
+        core_ctx = CoreContext.from_build_context(child_ctx)
+        child_ctx.fixture_context = fixture_ctx
+        child_ctx.core_context = core_ctx
+        return child_ctx
+
+    def build_strategy(self, params: JointParams) -> JointMeta:
+        inst = self.strategy(params, context=self)
+        return inst
+
+    def assemble(self, params: JointParams) -> JointMeta:
+        inst = self.build_strategy(params)
+        inst.assemble()
+        return inst
 
 
-class JointParams(BaseModel, JointParamsMeta):
+class JointParams(JointParamsMeta):
     vertex: ModelVertex
 
 
 @attrs.define
 class Joint(JointMeta):
-    fixture_builder: Type["FixtureMeta"] = Fixture
-    fixture_label_builder: Type["LabelMeta"] = FixtureLabel
-    core_builder: Type["CoreMeta"] = Core
-    core_label_builder: Type["LabelMeta"] = CoreLabel
+    context: JointContext
 
     def build_fixture_params(self) -> Iterator[FixtureParams]:
-        for edge in self.vertex.edges:
-            params = FixtureParams(source_edge=edge, source_vertex=self.vertex)
+        for edge in self.params.vertex.edges:
+            params = FixtureParams(source_edge=edge, source_vertex=self.params.vertex)
             yield params
 
-    @Timer(name="build>joint>get_sibling_fixtures", logger=logger.trace)
+    @scad_timer
     def get_sibling_fixtures(
         self, fixture: "Fixture", fixtures: Optional[List["Fixture"]] = None
     ) -> List["Fixture"]:
@@ -70,18 +80,45 @@ class Joint(JointMeta):
             raise RuntimeError("Fixtures have not been computed yet!")
         return [f for f in group if f.name != fixture.name]
 
-    @Timer(name="build>joint>compute_fixture_meshes", logger=logger.trace)
+    @scad_timer
     def compute_fixture_meshes(
-        self, fixtures: List["Fixture"]
-    ) -> List[Tuple[str, utils.SerializableMesh, FixtureMeshType]]:
-        tasks = []
-        for f in fixtures:
-            tasks += [(f, FixtureMeshType.HOLE), (f, FixtureMeshType.SHELL)]
-        with Pool() as pool:
-            _fixtures = list(pool.starmap(Fixture.serialize_mesh, tasks))
-        return _fixtures
+        self, fixtures: List["Fixture"], *mesh_types: FixtureMeshType
+    ) -> Dict[str, FixtureMeta]:
+        fixtures_by_name = {f.name: f for f in fixtures}
+        proc_count = min(len(fixtures) * 2, os.cpu_count() or 4)
+        logger.info("using {} processes for mesh pool.", proc_count)
+        with Pool(processes=proc_count, maxtasksperchild=1) as pool:
+            tasks = []
 
-    @Timer(name="build>joint>find_fixture_intersections", logger=logger.trace)
+            def on_mesh(fixture_name: str, mesh_result: FixtureMesh):
+                """collect task results and store by fixture name."""
+                logger.info("recieved mesh result: {}", mesh_result)
+                o3d_mesh = mesh_result.mesh.to_open3d(do_compute=True)
+                fixtures_by_name[fixture_name].meshes[mesh_result.mesh_type] = o3d_mesh
+
+            for fix in fixtures:
+                tasks += [
+                    pool.apply_async(
+                        self.context.fixture_context.serialize_mesh,
+                        (fix, mt),
+                        callback=partial(on_mesh, fix.name),
+                        error_callback=logger.error,
+                    )
+                    for mt in mesh_types
+                ]
+
+            while True:
+                time.sleep(0.5)
+                readies = [t for t in tasks if t.ready()]
+                logger.info(readies)
+                logger.info(f"{len(readies)}/{len(tasks)} tasks complete.")
+                if all([t.ready() for t in tasks]):
+                    logger.success("done")
+                    break
+
+        return fixtures_by_name
+
+    @scad_timer
     def find_fixture_intersections(self, fixtures: List["Fixture"]) -> Dict[str, Set]:
         # Set of other fixtures that intersect K's support hole..
         fixtures_states: Dict[str, Set] = dict()
@@ -96,20 +133,18 @@ class Joint(JointMeta):
         logger.trace("fixture intersect states: {}", fixtures_states)
         return fixtures_states
 
-    @Timer(name="build>joint>construct_fixtures", logger=logger.trace)
+    @scad_timer
     def construct_fixtures(self) -> List["FixtureMeta"]:
         params = self.build_fixture_params()
-        fixtures = [
-            self.fixture_builder(params=p, label_builder=self.fixture_label_builder) for p in params
-        ]
+        fixtures = [self.context.fixture_context.build_strategy(params=p) for p in params]
 
         # precompute meshes in parallel for time.
-        meshes = self.compute_fixture_meshes(fixtures)
-        for fname, mesh, mesh_type in meshes:
-            fix = next((f for f in fixtures if f.name == fname))
-            fix.meshes[mesh_type] = mesh.to_open3d(do_compute=True)
+        fixtures_by_name = self.compute_fixture_meshes(
+            fixtures, FixtureMeshType.HOLE, FixtureMeshType.SHELL
+        )
+        fixtures = list(fixtures_by_name.values())
 
-        _fixtures: Dict[str, "Fixture"] = {f.name: f for f in fixtures}
+        _fixtures = fixtures_by_name
         _fixtures_names = set(list(_fixtures.keys()))
         init_intersections = self.find_fixture_intersections(list(_fixtures.values()))
         _intersecting_fixtures = [_fixtures[k] for k, v in init_intersections.items() if any(v)]
@@ -138,17 +173,14 @@ class Joint(JointMeta):
         return self
 
     def build_core(self) -> "Joint":
-        core = self.core_builder(fixtures=self.fixtures)
-        core.assemble()
-        self.core = core
+        core_params = CoreParams(fixtures=self.fixtures)
+        self.core = self.context.core_context.assemble(core_params)
         return self
 
     @scad_timer
     def assemble(self):
         self.build_fixtures().build_core()
         self.scad_object = self.core.scad_object.copy() + [f.scad_object for f in self.fixtures]
-        # ensure we cleanup any potential overlapped corners and such.
-        # self.scad_object = bosl2.diff(' '.join(fixture_hole_tags), ' '.join(fixture_base_tags))(self.scad_object)
 
 
 class JointCoreOnlyDebug(Joint):
