@@ -147,7 +147,6 @@ class JointDirector:
         logger.success("Writing mesh -> {}", out_path)
         proc = utils.openscad_cmd(
             *self.params.render_file_type.scad_args,
-            "--enable=all",
             "-o",
             str(out_path),
             str(self.scad_paths[joint.vertex]),
