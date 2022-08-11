@@ -150,6 +150,8 @@ class Joint(JointMeta):
         _intersecting_fixtures = [_fixtures[k] for k, v in init_intersections.items() if any(v)]
         logger.warning("intersecting fixtures: {}", [f.name for f in _intersecting_fixtures])
 
+        # todo: properly optimize with a set high and binary search.
+        factor = 1.0
         while True:
             intersections = self.find_fixture_intersections(_intersecting_fixtures)
             inter_by_all = [any(ib) for ib in intersections.values()]
@@ -160,8 +162,9 @@ class Joint(JointMeta):
                 fix = _fixtures[fname]
                 if any(intersected_by):
                     logger.warning("[{}] intersected by: {}", fix.name, intersected_by)
-                    fix.extend_fixture_base(1)
+                    fix.extend_fixture_base(1.1 * factor)
                     _fixtures[fix.name] = fix
+            factor += 0.25
 
         return list(_fixtures.values())
 
