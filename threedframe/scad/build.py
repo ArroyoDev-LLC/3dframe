@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Union, TypeVar, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Dict, Type, Union, TypeVar, Optional, Sequence
 from pathlib import Path
 from multiprocessing import Pool
 
@@ -12,11 +12,11 @@ from pydantic import BaseModel, validator
 from codetiming import Timer
 
 from threedframe import utils
+from threedframe.config import config
 from threedframe.models import ModelData, ModelVertex
 from threedframe.constant import RenderFileType
+from threedframe.scad.joint import JointParams, JointContext
 from threedframe.scad.context import Context, BuildFlag
-
-from ..config import config
 
 if TYPE_CHECKING:
     from .interfaces import ScadMeta, JointMeta
@@ -26,26 +26,48 @@ ScadT = TypeVar("ScadT", bound="ScadMeta")
 
 
 @attrs.define
-class BuildContext:
-    flags: BuildFlag
-    joint_context: Context
+class DirectorContext:
+    context: Context
+    strategy: Type[JointDirector]
+
+    joint_context: Context = attrs.field(default=None)
+
+    @property
+    def flags(self) -> BuildFlag:
+        return self.context.flags
+
+    @classmethod
+    def from_build_context(cls, ctx: Context) -> DirectorContext:
+        strategy = JointDirector
+        child_ctx = cls(context=ctx, strategy=strategy)
+        joint_ctx = JointContext.from_build_context(child_ctx)
+        child_ctx.joint_context = joint_ctx
+        return child_ctx
+
+    def build_strategy(self, params: JointDirectorParams) -> JointDirector:
+        inst = self.strategy(params=params, context=self)
+        return inst
+
+    def assemble(self, params: JointDirectorParams) -> JointDirector:
+        inst = self.build_strategy(params)
+        inst.assemble()
+        return inst
 
 
 class JointDirectorParams(BaseModel):
-    # joint_builder: Optional[Type["JointMeta"]] = Joint
-    # fixture_builder: Optional[Type["FixtureMeta"]] = None
-    # fixture_label_builder: Optional[Type["LabelMeta"]] = None
-    # core_builder: Optional[Type["CoreMeta"]] = None
-    # core_label_builder: Optional[Type["LabelMeta"]] = None
-
     vertices: Optional[Sequence[Union[int, str]]] = None
     render: bool = False
     render_file_type: Optional[RenderFileType] = RenderFileType.STL
     model: ModelData
     overwrite: bool = False
 
+    @classmethod
+    def from_model_path(cls, path: Path, **kwargs) -> JointDirectorParams:
+        model = ModelData.from_source(path)
+        return cls(model=model, **kwargs)
+
     @staticmethod
-    @Timer("director>resolve_edge_relations")
+    @Timer("build>resolve_edge_relations", logger=logger.trace)
     def _resolve_edge_relations(
         model: "ModelData", vertices: Dict[int, "ModelVertex"]
     ) -> "ModelData":
@@ -82,20 +104,11 @@ class JointDirectorParams(BaseModel):
 
 @attrs.define
 class JointDirector:
-    context: BuildContext
+    context: DirectorContext
     params: JointDirectorParams
     joints: Dict["ModelVertex", "JointMeta"] = attrs.field(factory=dict)
     scad_paths: Dict["ModelVertex", Path] = attrs.field(factory=dict)
     render_paths: Dict["ModelVertex", Path] = attrs.field(factory=dict)
-
-    @property
-    def builder_params(self) -> Dict[str, Any]:
-        _build_params = self.params.dict(
-            exclude={"model", "vertices", "joint_builder", "render", "render_file_type"},
-            exclude_none=True,
-            exclude_unset=True,
-        )
-        return _build_params
 
     def vertex_by_idx_or_label(self, v: Union[int, str]) -> "ModelVertex":
         """Resolve vertex obj from vidx or label."""
@@ -106,7 +119,8 @@ class JointDirector:
     def create_joint(self, vertex: Union[int, "ModelVertex"]) -> "JointMeta":
         """Create joint object to be assembled."""
         vert = vertex if isinstance(vertex, ModelVertex) else self.params.model.vertices[vertex]
-        self.joints[vert] = self.params.joint_builder(vertex=vert, **self.builder_params)
+        joint_params = JointParams(vertex=vert)
+        self.joints[vert] = self.context.joint_context.assemble(joint_params)
         return self.joints[vert]
 
     @Timer("build>joint", logger=logger.success)
@@ -145,16 +159,18 @@ class JointDirector:
     def preview_joint(self, vertex: "ModelVertex"):
         rnd_path = self.render_paths[vertex]
         mesh: o3d.geometry.TriangleMesh = o3d.io.read_triangle_mesh(
-            str(rnd_path), enable_post_processing=True, print_progress=True
+            str(rnd_path),
+            enable_post_processing=True,
+            print_progress=True,
         )
         mesh.compute_vertex_normals()
         mesh.compute_triangle_normals()
-        o3d.visualization.draw([mesh])
+        o3d.visualization.draw([mesh], show_ui=True)
 
     @Timer("build", logger=logger.success)
     def assemble(self):
         logger.info("Constructing joint objects for {} vertices.", len(self.params.model.vertices))
-        logger.debug("Director builders: {}", self.builder_params)
+        logger.debug("Director context: {}", self.context)
         verts = self.params.model.vertices.values()
         for vert in verts:
             self.build_joint(vert)
@@ -164,7 +180,7 @@ class ParallelJointDirector(JointDirector):
     @Timer("build", logger=logger.success)
     def assemble(self):
         logger.info("Constructing joint objects for {} vertices.", len(self.params.model.vertices))
-        logger.debug("Director builders: {}", self.builder_params)
+        logger.debug("Director context: {}", self.context)
         workers = psutil.cpu_count()
         verts = self.params.model.vertices.values()
         chunk_size = len(verts) // workers
