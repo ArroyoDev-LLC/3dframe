@@ -1,49 +1,74 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Type, Optional
 
 import attrs
 import numpy as np
 import solid
 import solid.extensions.bosl2 as bosl2
+from boltons.dictutils import OMD
 
 from threedframe.utils import distance3d
 from threedframe.scad.label import LabelContext
 from threedframe.scad.context import Context, BuildFlag
-from threedframe.scad.interfaces import CoreMeta, scad_timer
+from threedframe.scad.interfaces import CoreMeta, CoreParametersBase, scad_timer
 
 if TYPE_CHECKING:
     import numpy as np
     import open3d as o3d
 
+    from threedframe.scad.interfaces import FixtureTag
+
 
 @attrs.define
-class CoreContext:
+class CoreContext(Context[CoreParametersBase]):
     context: Context
-    strategy: CoreMeta
+    strategy: Type[CoreMeta]
 
     label_context: LabelContext = attrs.field(default=None)
 
     @property
     def flags(self) -> BuildFlag:
-        return self.context.flags | BuildFlag.CORE_LABEL
+        return self.context.flags ^ BuildFlag.FIXTURE_LABEL
 
     @classmethod
     def from_build_context(cls, ctx: Context):
         strategy = Core
         child_ctx = cls(context=ctx, strategy=strategy)
         label_ctx = LabelContext.from_build_context(child_ctx)
+        child_ctx.label_context = label_ctx
         return child_ctx
+
+    def build_strategy(self, params: CoreParams) -> CoreMeta:
+        inst = self.strategy(params=params, context=self)
+        return inst
+
+    def assemble(self, params: CoreParams) -> CoreMeta:
+        strategy = self.build_strategy(params)
+        strategy.assemble()
+        return strategy
+
+
+class CoreParams(CoreParametersBase):
+    @property
+    def fixture_tags(self) -> OMD[FixtureTag, str]:
+        tags = OMD()
+        for fixture in self.fixtures:
+            tags.update_extend(fixture.params.tags)
+        return tags
 
 
 @attrs.define
 class Core(CoreMeta):
+    context: CoreContext
+    params: CoreParams
+
     verts: list[float] = attrs.field(factory=list)
 
     @property
     def source_label(self) -> Optional[str]:
-        if any(self.fixtures):
-            return self.fixtures[0].params.source_label
+        if any(self.params.fixtures):
+            return self.params.fixtures[0].params.source_label
         return None
 
     @property
@@ -60,7 +85,7 @@ class Core(CoreMeta):
     def assemble(self):
         origin = (0, 0, 0)
         # TODO: cleanup, optimize, and get rid of assertion.
-        for fixture in self.fixtures:
+        for fixture in self.params.fixtures:
             base_mesh: "o3d.geometry.TriangleMesh" = fixture.base_mesh
             base_mesh.remove_duplicated_vertices()
             min_bound, max_bound = base_mesh.get_min_bound(), base_mesh.get_max_bound()
