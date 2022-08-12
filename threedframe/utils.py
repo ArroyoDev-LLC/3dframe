@@ -1,6 +1,6 @@
-# -*- coding: utf-8 -*-
-
 """3DFrame Model Generator Utils."""
+from __future__ import annotations
+
 import os
 import sys
 import math
@@ -10,7 +10,19 @@ import shutil
 import itertools
 import subprocess as sp
 import collections
-from typing import Dict, List, Tuple, Union, Callable, Iterator, Optional, Sequence, DefaultDict
+from typing import (
+    Dict,
+    List,
+    Tuple,
+    Union,
+    TypeVar,
+    Callable,
+    ClassVar,
+    Iterator,
+    Optional,
+    Sequence,
+    DefaultDict,
+)
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -18,6 +30,7 @@ import numpy as np
 import solid
 import sympy as S
 import open3d as o3d
+import numpy.typing as npt
 import solid.extensions.legacy.utils as sutils
 from rich import print
 from solid import text, union, resize, translate, scad_render, linear_extrude
@@ -426,6 +439,9 @@ def rotate_about_pt(obj: OpenSCADObject, z: float, y: float, pt: GeomType):
     return solid.translate(_pt)(solid.rotate((0, y, z))(solid.translate(-_pt)(obj)))
 
 
+EigenVector3T = TypeVar("EigenVector3T", o3d.utility.Vector3iVector, o3d.utility.Vector3dVector)
+
+
 class SerializableMesh:
     """Serializable Open3D mesh.
 
@@ -433,18 +449,31 @@ class SerializableMesh:
         https://github.com/intel-isl/Open3D/issues/218#issuecomment-842918641
     """
 
-    def __init__(self, mesh: o3d.geometry.TriangleMesh):
-        self.vertices = np.asarray(mesh.vertices)
-        self.triangles = np.asarray(mesh.triangles)
+    SUPPORTED: ClassVar[set[str]] = {"vertices", "triangles", "vertex_normals", "triangle_normals"}
 
-    def to_open3d(self, do_compute: bool = False) -> o3d.geometry.TriangleMesh:
-        mesh = o3d.geometry.TriangleMesh(
-            vertices=o3d.utility.Vector3dVector(self.vertices),
-            triangles=o3d.utility.Vector3iVector(self.triangles),
-        )
-        if do_compute:
-            mesh.compute_vertex_normals()
-            mesh.compute_triangle_normals()
+    vertices: npt.NDArray[np.float64]
+    triangles: npt.NDArray[np.int32]
+
+    vertex_normals: npt.NDArray[np.float64]
+    triangle_normals: npt.NDArray[np.float64]
+
+    def __init__(self, mesh: o3d.geometry.TriangleMesh):
+        for key in SerializableMesh.SUPPORTED:
+            setattr(self, key, np.asarray(getattr(mesh, key)))
+
+    def numpy_to_eigen(self, arg: npt.NDArray[Union[np.float64, np.int32]]) -> EigenVector3T:
+        if arg.dtype == np.float64:
+            return o3d.utility.Vector3dVector(arg)
+        if arg.dtype == np.int32:
+            return o3d.utility.Vector3iVector(arg)
+        raise TypeError(f"Could not determine eigen type for: {arg}")
+
+    def to_open3d(self) -> o3d.geometry.TriangleMesh:
+        params = {
+            k: self.numpy_to_eigen(getattr(self, k))
+            for k in SerializableMesh.SUPPORTED - {"triangle_normals", "vertex_normals"}
+        }
+        mesh = o3d.geometry.TriangleMesh(**params)
         return mesh
 
 
