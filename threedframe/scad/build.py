@@ -17,6 +17,7 @@ from threedframe.models import ModelData, ModelVertex
 from threedframe.constant import RenderFileType
 from threedframe.scad.joint import JointParams, JointContext
 from threedframe.scad.context import Context, BuildFlag
+from threedframe.operations.pipes import OrientMeshFilePipeline
 
 if TYPE_CHECKING:
     from .interfaces import ScadMeta, JointMeta
@@ -153,6 +154,7 @@ class JointDirector:
         for line in iter(proc.stderr.readline, b""):
             outline = line.decode().rstrip("\n")
             logger.debug("[OpenSCAD]: {}", outline)
+        OrientMeshFilePipeline(out_path).apply(out_path)
 
     def preview_joint(self, vertex: "ModelVertex"):
         rnd_path = self.render_paths[vertex]
