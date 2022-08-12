@@ -93,7 +93,7 @@ class Joint(JointMeta):
             def on_mesh(fixture_name: str, mesh_result: FixtureMesh):
                 """collect task results and store by fixture name."""
                 logger.info("recieved mesh result: {}", mesh_result)
-                o3d_mesh = mesh_result.mesh.to_open3d(do_compute=True)
+                o3d_mesh = mesh_result.mesh.to_open3d()
                 fixtures_by_name[fixture_name].meshes[mesh_result.mesh_type] = o3d_mesh
 
             for fix in fixtures:
