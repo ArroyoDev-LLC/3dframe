@@ -128,7 +128,6 @@ class JointDirector:
     def build_joint(self, vertex: "ModelVertex") -> Optional["JointMeta"]:
         logger.info("Building joint for vertex: {}", vertex.vidx)
         joint = self.create_joint(vertex=vertex)
-        joint.assemble()
         self.write_joint(joint)
         return joint
 
