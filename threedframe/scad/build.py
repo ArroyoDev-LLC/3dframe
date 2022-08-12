@@ -26,11 +26,11 @@ ScadT = TypeVar("ScadT", bound="ScadMeta")
 
 
 @attrs.define
-class DirectorContext:
-    context: Context
+class DirectorContext(Context["JointDirectorParams"]):
     strategy: Type[JointDirector]
+    context: Context = attrs.field(repr=False)
 
-    joint_context: Context = attrs.field(default=None)
+    joint_context: JointContext = attrs.field(default=None)
 
     @property
     def flags(self) -> BuildFlag:
@@ -104,9 +104,9 @@ class JointDirectorParams(BaseModel):
 
 @attrs.define
 class JointDirector:
-    context: DirectorContext
-    params: JointDirectorParams
-    joints: Dict["ModelVertex", "JointMeta"] = attrs.field(factory=dict)
+    context: DirectorContext = attrs.field(repr=False)
+    params: JointDirectorParams = attrs.field(repr=False)
+    joints: Dict["ModelVertex", "JointMeta"] = attrs.field(factory=dict, repr=False)
     scad_paths: Dict["ModelVertex", Path] = attrs.field(factory=dict)
     render_paths: Dict["ModelVertex", Path] = attrs.field(factory=dict)
 
