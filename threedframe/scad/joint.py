@@ -27,8 +27,8 @@ from threedframe.scad.interfaces import JointMeta, FixtureMeta, JointParamsMeta,
 
 @attrs.define
 class JointContext(Context["JointParams"]):
-    context: Context
     strategy: Type[JointMeta]
+    context: Context = attrs.field(repr=False)
 
     fixture_context: FixtureContext = attrs.field(default=None)
     core_context: CoreContext = attrs.field(default=None)

@@ -28,8 +28,8 @@ from threedframe.scad.interfaces import FixtureMeta, scad_timer
 
 @attrs.define
 class FixtureContext(Context["FixtureParams"]):
-    context: Context
     strategy: Type[FixtureMeta]
+    context: Context = attrs.field(repr=False)
 
     label_context: LabelContext = attrs.field(default=None)
 

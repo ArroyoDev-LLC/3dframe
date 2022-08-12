@@ -22,8 +22,8 @@ if TYPE_CHECKING:
 
 @attrs.define
 class CoreContext(Context[CoreParametersBase]):
-    context: Context
     strategy: Type[CoreMeta]
+    context: Context = attrs.field(repr=False)
 
     label_context: LabelContext = attrs.field(default=None)
 
