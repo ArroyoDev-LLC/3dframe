@@ -313,8 +313,12 @@ def shell(
         "config.setup_solid()",
         f"config.SUPPORT_SCALE = {scale}",
         "from threedframe.scad import *",
-        f"params = JointDirectorParams(model=Path('{model_path}'))",
-        "director = JointDirector(params=params)",
+        "from threedframe.scad import context as scad_context, build as scad_build",
+        f"params = JointDirectorParams.from_model_path(Path('{model_path}'))",
+        "build_ctx = scad_context.BuildContext()",
+        "build_ctx.build_flags ^= scad_context.BuildFlag.LABELS",
+        "director_ctx = scad_build.DirectorContext.from_build_context(build_ctx)",
+        "director = director_ctx.build_strategy(params=params)",
     ]
     if vertex:
         exec_lines.extend(
