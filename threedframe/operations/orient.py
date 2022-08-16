@@ -11,14 +11,17 @@ import open3d as o3d
 from tweaker3 import FileHandler, MeshTweaker
 
 from threedframe.utils import SerializableMesh
+from threedframe.operations.mesh_io import convert_bin_stl_to_ascii
 
 
 @attrs.define
 class OptimalOrientOperation:
     def _prepare_mesh(self, mesh: o3d.geometry.TriangleMesh) -> list[list[int]]:
         tmp_file = tempfile.mktemp(suffix=".stl")
-        # TODO: apparently o3d doesnt actually support writing stl ascii yet...
-        o3d.io.write_triangle_mesh(tmp_file, mesh, write_ascii=True)
+        mesh.compute_vertex_normals()
+        mesh.compute_triangle_normals()
+        o3d.io.write_triangle_mesh(tmp_file, mesh)
+        convert_bin_stl_to_ascii(Path(tmp_file))
         fh = FileHandler.FileHandler()
         objs: list[dict[str, list[list[int]]]] = fh.load_mesh(tmp_file)
         _mesh = objs[0]["mesh"]
