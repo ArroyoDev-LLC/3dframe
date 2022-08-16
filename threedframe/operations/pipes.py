@@ -31,11 +31,11 @@ class OperationPipeline:
         for op in self.operations:
             if isinstance(op, OperationPipeline):
                 result = op.apply(result)
-            if isinstance(op, Operation):
+            elif isinstance(op, Operation):
                 logger.info("applying operation: {!r}", op)
                 result = op.operate(result)
             else:
-                raise TypeError("Expected Operation or OperationPipeline object, got: {}", o)
+                raise TypeError(f"Expected Operation or OperationPipeline object, got: {op}")
         return result
 
 
