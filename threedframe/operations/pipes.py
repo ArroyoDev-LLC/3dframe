@@ -46,5 +46,8 @@ OrientPipeline = OperationPipeline().add_ops(
 )
 
 OrientMeshFilePipeline = lambda path: OperationPipeline().add_ops(
-    op.ReadMeshOperation(), op.SerializeMeshOperation(), OrientPipeline, op.WriteMeshOperation(path)
+    op.ReadMeshOperation(),
+    op.SerializeMeshOperation(),
+    OrientPipeline,
+    op.WriteMeshOperation(path),
 )
