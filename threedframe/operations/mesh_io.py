@@ -12,6 +12,8 @@ from threedframe.utils import SerializableMesh
 
 
 def write_mesh(path: Path, mesh: o3d.geometry.TriangleMesh) -> Path:
+    mesh.compute_vertex_normals()
+    mesh.compute_triangle_normals()
     o3d.io.write_triangle_mesh(str(path.absolute()), mesh)
     return path
 
