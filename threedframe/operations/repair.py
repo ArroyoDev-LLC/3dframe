@@ -23,6 +23,8 @@ def repair_mesh(mesh: o3d.geometry.TriangleMesh) -> o3d.geometry.TriangleMesh:
     new_mesh.remove_duplicated_triangles()
     new_mesh.remove_degenerate_triangles()
     new_mesh.remove_non_manifold_edges()
+    new_mesh.compute_vertex_normals()
+    new_mesh.compute_triangle_normals()
     return new_mesh
 
 
