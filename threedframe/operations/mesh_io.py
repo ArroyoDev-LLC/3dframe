@@ -75,9 +75,14 @@ class ReadMeshOperation:
 @attrs.define
 class WriteMeshOperation:
     path: Path
+    ascii: bool = attrs.field(default=False)
 
-    def operate(self, mesh: o3d.geometry.TriangleMesh) -> Path:
-        return write_mesh(self.path, mesh)
+    def operate(self, mesh: SerializableMesh) -> Path:
+        _mesh = mesh.to_open3d()
+        _path = write_mesh(self.path, _mesh)
+        if self.ascii:
+            return convert_bin_stl_to_ascii(_path)
+        return _path
 
 
 @attrs.define
