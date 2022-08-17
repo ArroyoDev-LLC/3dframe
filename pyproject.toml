@@ -96,7 +96,7 @@ snapshottest = "^0.6.0"
 [tool.black]
 line-length = 100
 skip-string-normalization = false
-target-version = ['py39']
+target-version = ['py310']
 include = '\.pyi?$'
 exclude = '''
 (
