@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-ARG PYTHON_BASE_TAG="3.9.13-bullseye"
+ARG PYTHON_BASE_TAG="3.10.6-bullseye"
 ARG DEBIAN_BASE_TAG="bullseye-20220711-slim"
 #################
 ## Python Base
@@ -9,7 +9,7 @@ FROM python:${PYTHON_BASE_TAG} AS python-base
 ARG APP_NAME=threedframe
 ARG APP_PATH=/app/$APP_NAME
 
-ARG PYTHON_VERSION=3.9.13
+ARG PYTHON_VERSION=3.10.6
 ARG POETRY_VERSION=1.2.0b3
 
 # Python Env
